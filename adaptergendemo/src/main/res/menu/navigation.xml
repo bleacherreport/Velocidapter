@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/single"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="@string/title_single" />
+
+    <item
+        android:id="@+id/multi"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="@string/title_multi" />
+
+    <item
+        android:id="@+id/parent_child"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="@string/title_parent_child" />
+
+    <item
+        android:id="@+id/diff"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="@string/title_diff" />
+
+</menu>

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">AdapterGenDemo</string>
+    <string name="title_single">SingleType</string>
+    <string name="title_multi">Multi-Type</string>
+    <string name="title_parent_child">ExtendedTypes</string>
+    <string name="title_diff">DiffUtil</string>
+</resources>
