@@ -7,12 +7,12 @@ import androidx.recyclerview.widget.RecyclerView
  * A RecyclerView.Adapter class designed to allow logical injection view Lambda functions
  */
 class FunctionalAdapter<T : ScopedDataList>(
-        val onCreateViewHolder: (ViewGroup, Int) -> RecyclerView.ViewHolder,
-        val onBindViewHolder: (RecyclerView.ViewHolder, Int, List<Any>) -> Unit,
-        val getItemViewType: (Int, List<Any>) -> Int) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), AdapterDataTarget<T> {
+        private val onCreateViewHolder: (ViewGroup, Int) -> RecyclerView.ViewHolder,
+        private val onBindViewHolder: (RecyclerView.ViewHolder, Int, List<Any>) -> Unit,
+        private val getItemViewType: (Int, List<Any>) -> Int) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), AdapterDataTarget<T> {
 
-    private var currentDataset: List<Any> = mutableListOf()
-    override var shouldRunDiff: Boolean = false
+    private var currentDataset = listOf<Any>()
+    override var shouldRunDiff = false
     private var isDiffComparable: Boolean? = null
 
     override fun getItemCount(): Int {
@@ -32,7 +32,7 @@ class FunctionalAdapter<T : ScopedDataList>(
     }
 
     override fun updateDataset(newDataset: T) {
-        if (currentDataset.isEmpty() || checkDiffComparable(newDataset)) {
+        if (currentDataset.isEmpty() || checkIsDiffComparable(newDataset)) {
             resetData(newDataset)
         } else {
             val diffResult = generateDiffResult(
@@ -50,15 +50,13 @@ class FunctionalAdapter<T : ScopedDataList>(
     }
 
     override fun setEmpty() {
-        currentDataset = mutableListOf()
+        currentDataset = listOf()
     }
 
-    fun checkDiffComparable(dataSet: T) : Boolean {
-        if(isDiffComparable == null) {
+    private fun checkIsDiffComparable(dataSet: T): Boolean {
+        if (isDiffComparable == null) {
             isDiffComparable = shouldRunDiff && dataSet.isDiffComparable()
         }
-        return isDiffComparable!!
+        return isDiffComparable ?: false
     }
-
-
 }

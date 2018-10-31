@@ -9,15 +9,14 @@ import androidx.recyclerview.widget.RecyclerView
  * @return the called class
  */
 fun RecyclerView.with(layoutManager: RecyclerView.LayoutManager): RecyclerView {
-    this.layoutManager = layoutManager
-    return this
+    return this.also { it.layoutManager = layoutManager }
 }
 
-fun RecyclerView.withLinearLayoutManager(reverse: Boolean = false, horizontal: Boolean = false): RecyclerView {
-    if(horizontal) {
-        this.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, reverse)
-    } else {
-        this.layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, reverse)
+fun RecyclerView.withLinearLayoutManager(horizontal: Boolean = false,
+                                         reverse: Boolean = false): RecyclerView {
+    return this.apply {
+        layoutManager = LinearLayoutManager(context,
+                if (horizontal) RecyclerView.HORIZONTAL else RecyclerView.VERTICAL,
+                reverse)
     }
-    return this
 }
