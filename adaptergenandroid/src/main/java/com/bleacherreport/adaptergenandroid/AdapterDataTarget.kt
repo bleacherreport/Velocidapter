@@ -12,33 +12,34 @@ interface AdapterDataTarget<T : ScopedDataList> {
     fun updateDataset(newDataset: T)
     fun resetData(newDataset: T)
     fun setEmpty()
-    var isDiffComparable: Boolean?
+    var shouldRunDiff: Boolean
 }
 
 /**
+ * Enables DiffUtil updates on target, must be called before first data is set on target
+ *
+ * Note: All classes contained in the data set must implement DiffComparable, or this function does nothing
+ * Additional Note: a minor amount of reflection will be done on the first update of the dataset, do not enable unless needed
+ *
+ * */
+fun <T : ScopedDataList> AdapterDataTarget<T>.enableDiff() : AdapterDataTarget<T> {
+    this.shouldRunDiff = true
+    return this
+}
+
+
+/**
  * Binds AdapterDataTarget to LiveData with LifecycleOwner
- *
- * @param hardReset specifies whether the underlying update should be done with via a diffing function
- * or by invalidating the entire data set
- *
- * Note: All classes contained in the data set must implement DiffComparable, or hardReset=false will behave like true
- * Additional Note: a minor amount of reflection will be done on the first update of the dataset if hardReset is set to false
  *
  * @param liveData the live data which will be bound to the AdapterDataTarget
  * @param lifecycleOwner The LifecycleOwner which controls the observer
  *
  */
-fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveData(hardReset: Boolean = true, liveData: LiveData<T>, lifecycleOwner: LifecycleOwner) {
+fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveData(liveData: LiveData<T>, lifecycleOwner: LifecycleOwner) {
     val adapterDataTarget = this
     liveData.observe(lifecycleOwner, Observer<T> { list: T? ->
-        adapterDataTarget.isDiffComparable = hardReset
         if (list != null) {
-            if (hardReset) {
-                adapterDataTarget.isDiffComparable = hardReset
-                adapterDataTarget.resetData(list)
-            } else {
-                adapterDataTarget.updateDataset(list)
-            }
+            adapterDataTarget.resetData(list)
         } else {
             adapterDataTarget.setEmpty()
         }
@@ -48,25 +49,14 @@ fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveData(hardReset: Boolean
 /**
  * Binds AdapterDataTarget to LiveData indefinitely.
  *
- * @param hardReset specifies whether the underlying update should be done with via a diffing function
- * or by invalidating the entire data set
- *
- * Note: All classes contained in the data set must implement DiffComparable, or hardReset=false will behave like true
- * Additional Note: a minor amount of reflection will be done on the first update of the dataset if hardReset is set to false
- *
  * @param liveData the live data which will be bound to the AdapterDataTarget
  * @return the Observer that was created from LiveData subscription. Use to cancel Observation as usual
  */
-fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveDataForever(hardReset: Boolean = true, liveData: LiveData<T>): Observer<T> {
+fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveDataForever(liveData: LiveData<T>): Observer<T> {
     val adapterDataTarget = this
     val observer: Observer<T> = Observer { list: T? ->
         if (list != null) {
-            if (hardReset) {
-                adapterDataTarget.isDiffComparable = hardReset
                 adapterDataTarget.resetData(list)
-            } else {
-                adapterDataTarget.updateDataset(list)
-            }
         } else {
             adapterDataTarget.setEmpty()
         }
