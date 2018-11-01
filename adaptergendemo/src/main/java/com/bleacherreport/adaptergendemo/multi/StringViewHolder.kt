@@ -10,7 +10,7 @@ import com.bleacherreport.adaptergendemo.R
 import kotlinx.android.extensions.LayoutContainer
 import kotlinx.android.synthetic.main.item_string.*
 
-@ViewHolder(adapters = [MainActivity.MULTI_VIEW_HOLDER_TYPE_ADAPTER], layoutResId = R.layout.item_string)
+@ViewHolder(adapters = [MainActivity.MultiAdapter], layoutResId = R.layout.item_string)
 class StringViewHolder(override val containerView: View) : RecyclerView.ViewHolder(containerView), LayoutContainer {
 
     @SuppressLint("SetTextI18n")

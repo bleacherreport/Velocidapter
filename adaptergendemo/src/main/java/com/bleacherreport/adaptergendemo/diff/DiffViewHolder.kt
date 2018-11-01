@@ -11,7 +11,7 @@ import com.bleacherreport.adaptergendemo.R
 import kotlinx.android.extensions.LayoutContainer
 import kotlinx.android.synthetic.main.item_string.*
 
-@ViewHolder(adapters = [MainActivity.DIFF_TYPE_ADAPTER], layoutResId = R.layout.item_string)
+@ViewHolder(adapters = [MainActivity.DiffTypeAdapter], layoutResId = R.layout.item_string)
 class DiffViewHolder(override val containerView: View) : RecyclerView.ViewHolder(containerView), LayoutContainer {
 
     @SuppressLint("SetTextI18n")

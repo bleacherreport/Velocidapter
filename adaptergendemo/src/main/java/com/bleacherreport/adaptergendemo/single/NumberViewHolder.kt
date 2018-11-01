@@ -9,7 +9,7 @@ import com.bleacherreport.adaptergendemo.R
 import kotlinx.android.extensions.LayoutContainer
 import kotlinx.android.synthetic.main.item_number.*
 
-@ViewHolder(adapters = [MainActivity.SINGLE_VIEW_HOLDER_TYPE_ADAPTER, MainActivity.MULTI_VIEW_HOLDER_TYPE_ADAPTER], layoutResId = R.layout.item_number)
+@ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], layoutResId = R.layout.item_number)
 class NumberViewHolder(override val containerView: View) : RecyclerView.ViewHolder(containerView), LayoutContainer {
 
     @Bind

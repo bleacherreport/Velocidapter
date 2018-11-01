@@ -103,9 +103,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val SINGLE_VIEW_HOLDER_TYPE_ADAPTER = "SingleAdapter"
-        const val MULTI_VIEW_HOLDER_TYPE_ADAPTER = "MultiAdapter"
-        const val PARENT_AND_CHILD_VIEW_HOLDER_TYPE_ADAPTER = "ParentChildAdapter"
-        const val DIFF_TYPE_ADAPTER = "DiffTypeAdapter"
+        const val SingleAdapter = "SingleAdapter"
+        const val MultiAdapter = "MultiAdapter"
+        const val ParentChildAdapter = "ParentChildAdapter"
+        const val DiffTypeAdapter = "DiffTypeAdapter"
     }
 }
