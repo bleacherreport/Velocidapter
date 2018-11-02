@@ -4,4 +4,8 @@
     <string name="title_multi">Multi-Type</string>
     <string name="title_parent_child">ExtendedTypes</string>
     <string name="title_diff">DiffUtil</string>
+    <string name="description_single">A demonstration of a RecyclerView Adapter with ViewHolders of one type. See NumberViewHolder.</string>
+    <string name="description_multi">A demonstration of a RecyclerView Adapter with ViewHolders of multiple types. Notice both NumberViewHolder and StringViewHolder are used for this Adapter</string>
+    <string name="description_parent_child">A demonstration of a RecyclerView Adapter with ViewHolders of two types, one of which is a child of the other. See ChildViewHolder and ParentViewHolder. Notice the child\'s bind overrides the parent\'s.</string>
+    <string name="description_diff">A demonstration of a RecyclerView Adapter with one ViewHolder type that implements DiffComparable. Notice in MainActivity that the entire list is repopulated each time a new value is added, but since the ViewHolder implements DiffComparable and we use updateDataset on the adapter, only new or changed items are added and changed.</string>
 </resources>
