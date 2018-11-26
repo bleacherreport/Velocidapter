@@ -42,7 +42,7 @@ class AdapterGenProcessor : AbstractProcessor() {
         roundEnv?.getElementsAnnotatedWith(Bind::class.java)?.forEach { element ->
             val executableType = element.asType() as ExecutableType
             val parameters = executableType.parameterTypes
-            if (parameters.size > 2) {
+            if (parameters.size != 2) {
                 throw RuntimeException("@Bind method must take one Any and one Int")
             }
             val param1 = parameters[0]
