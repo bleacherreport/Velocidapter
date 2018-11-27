@@ -19,7 +19,6 @@ interface AdapterDataTarget<T : ScopedDataList> {
  * Enables DiffUtil updates on target, must be called before first data is set on target
  *
  * Note: All classes contained in the data set must implement DiffComparable, or this function does nothing
- * Additional Note: a minor amount of reflection will be done on the first update of the dataset, do not enable unless needed
  *
  * */
 fun <T : ScopedDataList> AdapterDataTarget<T>.enableDiff() : AdapterDataTarget<T> {
@@ -38,10 +37,10 @@ fun <T : ScopedDataList> AdapterDataTarget<T>.enableDiff() : AdapterDataTarget<T
 fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveData(liveData: LiveData<T>, lifecycleOwner: LifecycleOwner) {
     val adapterDataTarget = this
     liveData.observe(lifecycleOwner, Observer<T> { list: T? ->
-        if (list != null) {
-            adapterDataTarget.resetData(list)
-        } else {
+        if (list == null || list.isNullOrEmpty()) {
             adapterDataTarget.setEmpty()
+        } else {
+            adapterDataTarget.updateDataset(list)
         }
     })
 }
@@ -55,10 +54,10 @@ fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveData(liveData: LiveData
 fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveDataForever(liveData: LiveData<T>): Observer<T> {
     val adapterDataTarget = this
     val observer: Observer<T> = Observer { list: T? ->
-        if (list != null) {
-                adapterDataTarget.resetData(list)
-        } else {
+        if (list == null || list.isNullOrEmpty()) {
             adapterDataTarget.setEmpty()
+        } else {
+            adapterDataTarget.updateDataset(list)
         }
     }
     liveData.observeForever(observer)

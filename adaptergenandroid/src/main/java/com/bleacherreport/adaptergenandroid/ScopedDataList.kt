@@ -6,19 +6,13 @@ package com.bleacherreport.adaptergenandroid
  * Note: while this class has "List" in the name it does not implement the List interface, generated
  * child classes will only have adder methods. This is done for the sake of immutability.
  */
-open class ScopedDataList {
+abstract class ScopedDataList {
 
+    abstract val isDiffComparable : Boolean
     protected val listInternal = mutableListOf<Any>()
 
     val list: List<Any>
         get() = listInternal.toList()
-    
-    fun isDiffComparable() : Boolean {
-        this::class.java.methods.forEach { method ->  
-            method.parameterTypes.forEach {parameter ->
-                if(parameter.isAssignableFrom(DiffComparable::class.java)) return false
-            }
-        }
-        return true
-    }
+
+    fun isNullOrEmpty(): Boolean = listInternal.isNullOrEmpty()
 }

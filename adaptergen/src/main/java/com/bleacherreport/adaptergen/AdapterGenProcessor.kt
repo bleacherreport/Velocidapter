@@ -3,10 +3,8 @@ package com.bleacherreport.adaptergen
 import com.bleacherreport.adaptergenanotations.Bind
 import com.bleacherreport.adaptergenanotations.ViewHolder
 import com.google.auto.service.AutoService
-import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import java.io.File
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.Processor
@@ -19,7 +17,6 @@ import javax.lang.model.element.TypeElement
 import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.ExecutableType
 import javax.lang.model.type.PrimitiveType
-import javax.lang.model.util.Elements
 
 
 @AutoService(Processor::class)
@@ -33,7 +30,6 @@ class AdapterGenProcessor : AbstractProcessor() {
         return SourceVersion.latestSupported()
     }
 
-
     override fun process(set: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
         val adapterMap = HashMap<String, HashSet<String>>()
         val layoutResIdMap = HashMap<String, Int>()
@@ -42,7 +38,7 @@ class AdapterGenProcessor : AbstractProcessor() {
         roundEnv?.getElementsAnnotatedWith(Bind::class.java)?.forEach { element ->
             val executableType = element.asType() as ExecutableType
             val parameters = executableType.parameterTypes
-            if (parameters.size > 2) {
+            if (parameters.size != 2) {
                 throw RuntimeException("@Bind method must take one Any and one Int")
             }
             val param1 = parameters[0]
@@ -102,8 +98,10 @@ class AdapterGenProcessor : AbstractProcessor() {
         val typeSpec = TypeSpec.classBuilder(name)
                 .superclass(ClassName("com.bleacherreport.adaptergenandroid", "ScopedDataList"))
 
+        val dataClassNames = mutableListOf<String>()
         viewHolderTypes.forEach { viewHolderType ->
             val argumentClassName = argumentTypeMap[viewHolderType]!!
+            dataClassNames.add(argumentClassName)
             val simpleClassName = argumentClassName.split(".").last()
             typeSpec.addFunction(FunSpec.builder("add")
                     .addParameter("model", ClassName("", argumentClassName))
@@ -115,6 +113,24 @@ class AdapterGenProcessor : AbstractProcessor() {
                     .addCode("listInternal.addAll(list)")
                     .build())
         }
+
+        typeSpec.addProperty(PropertySpec.builder("listClasses", ClassName("kotlin.collections", "List")
+                .parameterizedBy(ClassName("", "Class")
+                        .parameterizedBy(WildcardTypeName.STAR)))
+                    .initializer("listOf(${dataClassNames.joinToString(", ") { "$it::class.java" }})")
+                    .addModifiers(KModifier.PRIVATE)
+                    .build())
+                .build()
+
+        typeSpec.addProperty(PropertySpec.builder("isDiffComparable", Boolean::class.asClassName())
+                    .addModifiers(KModifier.OVERRIDE)
+                    .delegate(CodeBlock.builder()
+                            .beginControlFlow("lazy")
+                            .add("listClasses.all { com.bleacherreport.adaptergenandroid.DiffComparable::class.java.isAssignableFrom(it) }")
+                            .endControlFlow()
+                            .build())
+                    .build())
+                .build()
 
         return typeSpec.build()
     }

@@ -31,8 +31,9 @@ class FunctionalAdapter<T : ScopedDataList>(
         return getItemViewType.invoke(position, currentDataset)
     }
 
+    @Suppress("UNCHECKED_CAST")
     override fun updateDataset(newDataset: T) {
-        if (currentDataset.isEmpty() || checkIsDiffComparable(newDataset)) {
+        if (currentDataset.isEmpty() || !checkIsDiffComparable(newDataset)) {
             resetData(newDataset)
         } else {
             val diffResult = generateDiffResult(
@@ -50,12 +51,12 @@ class FunctionalAdapter<T : ScopedDataList>(
     }
 
     override fun setEmpty() {
-        currentDataset = listOf()
+        currentDataset = emptyList()
     }
 
     private fun checkIsDiffComparable(dataSet: T): Boolean {
         if (isDiffComparable == null) {
-            isDiffComparable = shouldRunDiff && dataSet.isDiffComparable()
+            isDiffComparable = shouldRunDiff && dataSet.isDiffComparable
         }
         return isDiffComparable ?: false
     }
