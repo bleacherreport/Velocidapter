@@ -46,8 +46,6 @@ dependencies {
 
     //Needed for AdapterGen
     kapt project(':adaptergen')
-    annotationProcessor project(':adaptergen')
-    compileOnly project(':adaptergen')
     implementation project(':adaptergenannotations')
     implementation project(':adaptergenandroid')
 
