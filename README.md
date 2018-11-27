@@ -24,7 +24,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val dataTarget = recyclerView.withLinearLayoutManager().attachMyAdapter()
+        val dataTarget = recyclerView.withLinearLayoutManager()
+                                     .attachMyAdapter()
         val dataList = MyAdapterDataList()
         dataList.add("hello")
         dataList.add(123)
@@ -83,7 +84,8 @@ fun bindModel(data: String, position: Int)
 Now you should be ready to run a quick build of your project, and the Adapter will be generated for you. Now you can bind it to it's RecyclerView, likely somewhere in your activity or fragment. The function `attachMyAdapter()` is generated based on your adapter name and will return a `AdapterDataTarget`
 
 ```
-val dataTarget = recyclerView.withLinearLayoutManager().attachMyAdapter()
+val dataTarget = recyclerView.withLinearLayoutManager()
+                             .attachMyAdapter()
 ```
 
 Now of course you need to give this adapter the data it should show. This data should come in a generated type. For this example it's called `MyAdapterDataList`, a type safe wrapper around a list.
@@ -132,7 +134,9 @@ data class DiffPoko(val id : Int, val time: Long) : DiffComparable {
 We then need to enable list diffing on the `AdapterDataTarget`
 
 ```
-val target = recyclerView.withLinearLayoutManager().attachDiffTypeAdapter().enableDiff()
+val target = recyclerView.withLinearLayoutManager()
+                         .attachDiffTypeAdapter()
+                         .enableDiff()
 ```
 
 Once that's enabled, all we need to do is update the list using
@@ -149,11 +153,15 @@ Velocidapter will update, delete, and move items as needed based off of the Diff
 
 ```
 val liveData = viewModel.getLiveData()
-recyclerView.withLinearLayoutManager().attachDiffTypeAdapter().enableDiff().observeLiveData(liveData, lifecycleOwner)
+recyclerView.withLinearLayoutManager()
+            .attachMyAdapter()
+            .observeLiveData(liveData, lifecycleOwner)
 ```
 or
 ```
-val observer = recyclerView.withLinearLayoutManager().attachDiffTypeAdapter().enableDiff().observeLiveDataForever(liveData)
+val observer = recyclerView.withLinearLayoutManager()
+                           .attachMyAdapter()
+                           .observeLiveDataForever(liveData)
 ```
 
 ## Contribution
