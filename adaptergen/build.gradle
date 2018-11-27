@@ -14,18 +14,15 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation project(':adaptergenannotations')
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
     implementation 'com.squareup:kotlinpoet:1.0.0-RC1'
-
-    compile "com.google.auto.service:auto-service:1.0-rc2"
+    implementation "com.google.auto.service:auto-service:1.0-rc2"
     kapt "com.google.auto.service:auto-service:1.0-rc2"
-
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-
-    testImplementation 'junit:junit:4.12'
 }
 
 repositories {
     maven { url 'http://dl.bintray.com/kotlin/kotlin-eap' }
     mavenCentral()
 }
-
