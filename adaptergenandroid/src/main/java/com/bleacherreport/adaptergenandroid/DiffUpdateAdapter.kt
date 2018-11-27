@@ -56,7 +56,7 @@ class FunctionalAdapter<T : ScopedDataList>(
 
     private fun checkIsDiffComparable(dataSet: T): Boolean {
         if (isDiffComparable == null) {
-            isDiffComparable = shouldRunDiff && dataSet.isDiffComparable()
+            isDiffComparable = shouldRunDiff && dataSet.isDiffComparable
         }
         return isDiffComparable ?: false
     }
