@@ -12,13 +12,15 @@ open class ScopedDataList {
 
     val list: List<Any>
         get() = listInternal.toList()
+
+    fun isNullOrEmpty(): Boolean = listInternal.isNullOrEmpty()
     
     fun isDiffComparable() : Boolean {
         this::class.java.methods.forEach { method ->  
             method.parameterTypes.forEach {parameter ->
-                if(parameter.isAssignableFrom(DiffComparable::class.java)) return false
+                if(parameter.isAssignableFrom(DiffComparable::class.java)) return true
             }
         }
-        return true
+        return false
     }
 }

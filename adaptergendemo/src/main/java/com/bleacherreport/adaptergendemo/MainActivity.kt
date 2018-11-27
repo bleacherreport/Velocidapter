@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         val dataList = SingleAdapterDataList()
         for (i in 0 until 100) dataList.add(i)
         dataList.addListOfInt(listOf(101, 102, 103))
-        target.resetData(dataList)
+        target.updateDataset(dataList)
         return true
     }
 
@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
             dataList.add(ChildPoko(i.toString()))
             dataList.add(ParentPoko(i.toString()))
         }
-        target.resetData(dataList)
+        target.updateDataset(dataList)
         return true
     }
 

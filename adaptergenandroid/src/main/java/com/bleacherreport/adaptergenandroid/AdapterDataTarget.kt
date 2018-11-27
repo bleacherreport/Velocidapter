@@ -38,10 +38,10 @@ fun <T : ScopedDataList> AdapterDataTarget<T>.enableDiff() : AdapterDataTarget<T
 fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveData(liveData: LiveData<T>, lifecycleOwner: LifecycleOwner) {
     val adapterDataTarget = this
     liveData.observe(lifecycleOwner, Observer<T> { list: T? ->
-        if (list != null) {
-            adapterDataTarget.resetData(list)
-        } else {
+        if (list == null || list.isNullOrEmpty()) {
             adapterDataTarget.setEmpty()
+        } else {
+            adapterDataTarget.updateDataset(list)
         }
     })
 }
@@ -55,10 +55,10 @@ fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveData(liveData: LiveData
 fun <T : ScopedDataList> AdapterDataTarget<T>.observeLiveDataForever(liveData: LiveData<T>): Observer<T> {
     val adapterDataTarget = this
     val observer: Observer<T> = Observer { list: T? ->
-        if (list != null) {
-                adapterDataTarget.resetData(list)
-        } else {
+        if (list == null || list.isNullOrEmpty()) {
             adapterDataTarget.setEmpty()
+        } else {
+            adapterDataTarget.updateDataset(list)
         }
     }
     liveData.observeForever(observer)
