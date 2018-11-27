@@ -9,7 +9,7 @@ Velocidapter writes your Adapters for you, and all you have to give it is ViewHo
 
 ## Usage
 
-Velocidapter uses kapt annotation processing to generate adapter classes and typesafe lists for you to update View Holders.
+Velocidapter uses kapt annotation processing to generate adapter classes and type safe lists for you to update View Holders.
 
 ### Short Version
 
@@ -24,11 +24,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val adapter = recyclerView.withLinearLayoutManager().attachMyAdapter()
+        val dataTarget = recyclerView.withLinearLayoutManager().attachMyAdapter()
         val dataList = MyAdapterDataList()
         dataList.add("hello")
         dataList.add(123)
-        adapter.resetData(dataList)
+        dataTarget.resetData(dataList)
     }
 }
 ```
@@ -80,13 +80,13 @@ Your ViewHolder needs to have a way to be bound with data. You need to annotate 
 fun bindModel(data: String, position: Int)
 ```
 
-Now you should be ready to run a quick build of your project, and the Adapter will be generated for you. Now you can bind it to it's RecyclerView, likely somewhere in your activity or fragment. The function `attachMyAdapter()` is generated based on your adapter name
+Now you should be ready to run a quick build of your project, and the Adapter will be generated for you. Now you can bind it to it's RecyclerView, likely somewhere in your activity or fragment. The function `attachMyAdapter()` is generated based on your adapter name and will return a `AdapterDataTarget`
 
 ```
-val adapter = recyclerView.withLinearLayoutManager().attachMyAdapter()
+val dataTarget = recyclerView.withLinearLayoutManager().attachMyAdapter()
 ```
 
-Now of course you need to give this adapter the data it should show. This data should come in a generated type. For this example it's called `MyAdapterDataList` and it's essentially a wrapper around a list.
+Now of course you need to give this adapter the data it should show. This data should come in a generated type. For this example it's called `MyAdapterDataList`, a type safe wrapper around a list.
 
 ```
 val dataList = MyAdapterDataList()
@@ -99,13 +99,62 @@ dataList.add("hello")
 dataList.addListOfString(listOf("hello", "world"))
 ```
 
-This list is passed to the Adapter using the most basic update function `resetData()`
+This list is passed to the Adapter using the most basic `AdapterDataTarget` update function `resetData()`
 
 ```
-adapter.resetData(dataList)
+dataTarget.resetData(dataList)
 ```
 
 And that's it! And if you wanted to add another ViewHolder that takes `Ints` for instance, you can just build the ViewHolder, bind it to the same Adapter, and start passing in `Ints` to the `MyAdapterDataList`. Easy as that.
+
+## AdapterDataTarget Functions
+
+So we can reset a generated Adapter, how about clearing the data set entirely? Simple, just call
+
+```
+dataTarget.setEmpty()
+```
+
+What if I want to update a few dataset items without resetting the whole list? First we will need all dataset types within the list to implement the DiffComparable interface. Our class must implement an `equals()` method that checks for exact internal equality and an `isSame()` method that check for equality via unique identifier
+
+```
+data class DiffPoko(val id : Int, val time: Long) : DiffComparable {
+    override fun isSame(that: Any): Boolean {
+        return if(that is DiffPoko) {
+            id == that.id
+        } else {
+            false
+        }
+    }
+}
+```
+
+We then need to enable list diffing on the `AdapterDataTarget`
+
+```
+val target = recyclerView.withLinearLayoutManager().attachDiffTypeAdapter().enableDiff()
+```
+
+Once that's enabled, all we need to do is update the list using
+
+```
+target.updateDataset(newDataList)
+```
+
+Velocidapter will update, delete, and move items as needed based off of the DiffComparable check. Failure to implement `DiffComparable` for all data types or forgetting to call `enableDiff()` will cause `updateDataset()` to function as `resetData()`
+
+## LiveData
+
+`LiveData` is supported out of the box as well.
+
+```
+val liveData = viewModel.getLiveData()
+recyclerView.withLinearLayoutManager().attachDiffTypeAdapter().enableDiff().observeLiveData(liveData, lifecycleOwner)
+```
+or
+```
+val observer = recyclerView.withLinearLayoutManager().attachDiffTypeAdapter().enableDiff().observeLiveDataForever(liveData)
+```
 
 ## Contribution
 Issues are welcome, but we are not currently accepting Pull Requests
