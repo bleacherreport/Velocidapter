@@ -19,7 +19,6 @@ interface AdapterDataTarget<T : ScopedDataList> {
  * Enables DiffUtil updates on target, must be called before first data is set on target
  *
  * Note: All classes contained in the data set must implement DiffComparable, or this function does nothing
- * Additional Note: a minor amount of reflection will be done on the first update of the dataset, do not enable unless needed
  *
  * */
 fun <T : ScopedDataList> AdapterDataTarget<T>.enableDiff() : AdapterDataTarget<T> {
