@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         val dataList = MyAdapterDataList()
         dataList.add("hello")
         dataList.add(123)
-        dataTarget.resetData(dataList)
+        dataTarget.updateDataset(dataList)
     }
 }
 ```
@@ -101,23 +101,27 @@ dataList.add("hello")
 dataList.addListOfString(listOf("hello", "world"))
 ```
 
-This list is passed to the Adapter using the most basic `AdapterDataTarget` update function `resetData()`
+This list is passed to the Adapter using the `AdapterDataTarget` update function `updateDataset()`. This function should be the primary way to update data. For this data set, since it's not `DiffComparable`, it will simply reset the data and call `notifyDataSetChanged()` on the Adapter. For more complex usages, see below.
 
 ```
-dataTarget.resetData(dataList)
+dataTarget.updateDataset(dataList)
 ```
 
 And that's it! And if you wanted to add another ViewHolder that takes `Ints` for instance, you can just build the ViewHolder, bind it to the same Adapter, and start passing in `Ints` to the `MyAdapterDataList`. Easy as that.
 
 ## AdapterDataTarget Functions
 
-So we can reset a generated Adapter, how about clearing the data set entirely? Simple, just call
-
+To clear all items from an `AdapterDataTarget` just call `setEmpty()`
 ```
 dataTarget.setEmpty()
 ```
 
-What if I want to update a few dataset items without resetting the whole list? First we will need all dataset types within the list to implement the DiffComparable interface. Our class must implement an `equals()` method that checks for exact internal equality and an `isSame()` method that check for equality via unique identifier
+To reset all items, just call `resetData()`
+```
+dataTarget.resetData(datalist)
+```
+
+What if I want to update a few dataset items without resetting the whole list? First we will need all dataset types within the list to implement the `DiffComparable` interface. Our class must implement an `equals()` method that checks for exact internal equality and an `isSame()` method that check for equality via unique identifier
 
 ```
 data class DiffPoko(val id : Int, val time: Long) : DiffComparable {
