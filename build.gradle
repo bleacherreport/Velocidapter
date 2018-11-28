@@ -34,9 +34,13 @@ def mainInstall = 'adaptergen:install'
 def mainUpload = 'adaptergen:bintrayUpload'
 def androidInstall = 'adaptergenandroid:install'
 def androidUpload = 'adaptergenandroid:bintrayUpload'
+def annotationsInstall = 'adaptergenannotations:install'
+def annotationsUpload = 'adaptergenannotations:bintrayUpload'
 
-task fullUpload(dependsOn: [clean, mainInstall, mainUpload, androidInstall, androidUpload])
+task fullUpload(dependsOn: [clean, mainInstall, mainUpload, androidInstall, androidUpload, annotationsInstall, annotationsUpload])
 task(mainInstall).mustRunAfter(clean)
 task(mainUpload).mustRunAfter(mainInstall)
 task(androidInstall).mustRunAfter(mainUpload)
 task(androidUpload).mustRunAfter(androidInstall)
+task(annotationsInstall).mustRunAfter(androidUpload)
+task(annotationsUpload).mustRunAfter(annotationsInstall)

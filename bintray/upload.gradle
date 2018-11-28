@@ -16,7 +16,6 @@ version = libraryVersion
 
 install {
     repositories.mavenInstaller {
-
         pom.project {
             packaging packageType
             groupId publishedGroupId
