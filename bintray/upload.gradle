@@ -1,0 +1,81 @@
+Properties localProps = new Properties()
+localProps.load(project.rootProject.file('local.properties').newDataInputStream())
+
+def developerId = localProps.getProperty("bintray.user")
+def developerName = localProps.getProperty("bintray.name")
+def developerEmail = localProps.getProperty("bintray.email")
+def developerKey = localProps.getProperty("bintray.apiKey")
+
+def projectProps = project.getProperties()
+def artifact = projectProps.get("artifact")
+def sourceDirs = projectProps.get("sourceDirs")
+def packageType = projectProps.get("packageType")
+
+group = publishedGroupId
+version = libraryVersion
+
+install {
+    repositories.mavenInstaller {
+
+        pom.project {
+            packaging packageType
+            groupId publishedGroupId
+            artifactId artifact
+
+            name libraryName
+            description libraryDescription
+            url siteUrl
+
+            licenses {
+                license {
+                    name licenseName
+                    url licenseUrl
+                }
+            }
+            developers {
+                developer {
+                    id developerId
+                    name developerName
+                    email developerEmail
+                }
+            }
+            scm {
+                connection gitUrl
+                developerConnection gitUrl
+                url siteUrl
+            }
+        }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceDirs
+}
+
+artifacts {
+    archives sourcesJar
+}
+
+bintray {
+    user = developerId
+    key = developerKey
+
+    configurations = ['archives']
+    pkg {
+        repo = bintrayRepo
+        name = artifact
+        desc = libraryDescription
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        issueTrackerUrl = issuesUrl
+        licenses = allLicenses
+        dryRun = false
+        publish = false
+        override = true
+        publicDownloadNumbers = true
+        version {
+            desc = libraryDescription
+        }
+    }
+}

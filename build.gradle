@@ -1,3 +1,5 @@
+apply from: 'bintray/properties.gradle'
+
 buildscript {
     ext.kotlin_version = '1.3.0'
     repositories {
@@ -7,6 +9,8 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:3.2.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.4.1'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
     }
 }
 
@@ -19,4 +23,20 @@ allprojects {
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+    subprojects {
+        rootProject.clean { dependsOn tasks.matching { it.name == 'clean' } }
+    }
 }
+
+// Bintray full upload steps
+
+def mainInstall = 'adaptergen:install'
+def mainUpload = 'adaptergen:bintrayUpload'
+def androidInstall = 'adaptergenandroid:install'
+def androidUpload = 'adaptergenandroid:bintrayUpload'
+
+task fullUpload(dependsOn: [clean, mainInstall, mainUpload, androidInstall, androidUpload])
+task(mainInstall).mustRunAfter(clean)
+task(mainUpload).mustRunAfter(mainInstall)
+task(androidInstall).mustRunAfter(mainUpload)
+task(androidUpload).mustRunAfter(androidInstall)
