@@ -1,1 +1,1 @@
-include ':adaptergen', ':adaptergenannotations', ':adaptergenandroid', ':adaptergendemo'
+include ':velocidapter', ':velocidapter-annotations', ':velocidapter-android', ':velocidapter-demo'

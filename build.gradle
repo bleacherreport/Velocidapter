@@ -31,12 +31,12 @@ task clean(type: Delete) {
 
 // Bintray full upload steps
 
-def mainInstall = 'adaptergen:install'
-def mainUpload = 'adaptergen:bintrayUpload'
-def androidInstall = 'adaptergenandroid:install'
-def androidUpload = 'adaptergenandroid:bintrayUpload'
-def annotationsInstall = 'adaptergenannotations:install'
-def annotationsUpload = 'adaptergenannotations:bintrayUpload'
+def mainInstall = 'velocidapter:install'
+def mainUpload = 'velocidapter:bintrayUpload'
+def androidInstall = 'velocidapter-android:install'
+def androidUpload = 'velocidapter-android:bintrayUpload'
+def annotationsInstall = 'velocidapter-annotations:install'
+def annotationsUpload = 'velocidapter-annotations:bintrayUpload'
 
 task fullUpload(dependsOn: [clean, mainInstall, mainUpload, androidInstall, androidUpload, annotationsInstall, annotationsUpload])
 task(mainInstall).mustRunAfter(clean)

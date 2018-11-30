@@ -8,10 +8,10 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/adaptergen" />
-            <option value="$PROJECT_DIR$/adaptergenandroid" />
-            <option value="$PROJECT_DIR$/adaptergenannotations" />
-            <option value="$PROJECT_DIR$/adaptergendemo" />
+            <option value="$PROJECT_DIR$/velocidapter" />
+            <option value="$PROJECT_DIR$/velocidapter-android" />
+            <option value="$PROJECT_DIR$/velocidapter-annotations" />
+            <option value="$PROJECT_DIR$/velocidapter-demo" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />
