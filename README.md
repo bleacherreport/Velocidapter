@@ -169,7 +169,7 @@ val observer = recyclerView.withLinearLayoutManager()
 ```
 
 ## Contribution
-Issues are welcome, but we are not currently accepting Pull Requests
+Issues and PRs are welcome!
 
 
 ## License
