@@ -70,8 +70,8 @@ bintray {
         issueTrackerUrl = issuesUrl
         licenses = allLicenses
         dryRun = false
-        publish = false
-        override = true
+        publish = true
+        override = false
         publicDownloadNumbers = true
         version {
             desc = libraryDescription

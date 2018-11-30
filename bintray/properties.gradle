@@ -1,16 +1,16 @@
 ext {
-    libraryVersion = '0.1.0-beta1'
+    libraryVersion = '1.0.0-beta'
 
     // Nothing below this line should ever change
-    bintrayRepo = 'test-velocidapter'
+    bintrayRepo = 'velocidapter'
     publishedGroupId = 'com.bleacherreport'
     libraryName = 'Velocidapter'
 
-    libraryDescription = 'TEST A Kotlin functional adapter code generation library'
+    libraryDescription = 'A Kotlin functional adapter code generation library'
 
-    siteUrl = 'https://github.com/br/Velocidapter'
-    gitUrl = 'https://github.com/br/Velocidapter.git'
-    issuesUrl = 'https://github.com/br/Velocidapter/issues'
+    siteUrl = 'https://github.com/bleacherreport/Velocidapter'
+    gitUrl = 'https://github.com/bleacherreport/Velocidapter.git'
+    issuesUrl = 'https://github.com/bleacherreport/Velocidapter/issues'
 
     licenseName = 'The Apache Software License, Version 2.0'
     licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'

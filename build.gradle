@@ -24,6 +24,7 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
     subprojects {
+        delete buildDir
         rootProject.clean { dependsOn tasks.matching { it.name == 'clean' } }
     }
 }
