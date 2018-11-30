@@ -16,7 +16,7 @@ sourceSets {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation project(':velocidapter-annotations')
+    implementation 'com.bleacherreport:velocidapter-annotations:1.0.0-beta'
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
