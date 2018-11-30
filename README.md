@@ -15,7 +15,7 @@ Velocidapter uses kapt annotation processing to generate adapter classes and typ
 
 For all you folks that just want to jump in, below is an example of a simple screen with one adapter that has two different ViewHolders and data types. The next section breaks this example down.
 
-```
+```kotlin
 const val MyAdapter = "MyAdapter"
 
 class MainActivity : AppCompatActivity() {
@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
 }
 ```
 
-```
+```kotlin
 @ViewHolder(adapters = [MyAdapter], layoutResId = R.layout.item_my_string)
 class MyStringViewHolder(override val containerView: View) : 
         RecyclerView.ViewHolder(containerView), LayoutContainer {
@@ -46,7 +46,7 @@ class MyStringViewHolder(override val containerView: View) :
 }
 ```
 
-```
+```kotlin
 @ViewHolder(adapters = [MyAdapter], layoutResId = R.layout.item_my_number)
 class NumberViewHolder(override val containerView: View) : 
         RecyclerView.ViewHolder(containerView), LayoutContainer {
@@ -62,13 +62,13 @@ class NumberViewHolder(override val containerView: View) :
 
 Decide a name for your adapter. This is the name your generated classes will be based on.
 
-```
+```kotlin
 const val MyAdapter = "MyAdapter"
 ```
 
 Next, create your ViewHolder. Your Adapter is bound to one or more Adapters using the `adapters` field in the `@ViewHolder` annotation (you see here we use the string defined above). You also specify the layout this ViewHolder infaltes in the `layoutResId` field.
 
-```
+```kotlin
 @ViewHolder(adapters = [MyAdapter], layoutResId = R.layout.item_my_view)
 class StringViewHolder(override val containerView: View) : 
         RecyclerView.ViewHolder(containerView), LayoutContainer
@@ -76,34 +76,34 @@ class StringViewHolder(override val containerView: View) :
 
 Your ViewHolder needs to have a way to be bound with data. You need to annotate any function within the ViewHolder with `@Bind`. The function can have any name, but must have 2 parameters, the first can be any type and is your only method of binding data to this ViewHolder. The second is an `Int` and indicates this item's position in the Adapter.
 
-```
+```kotlin
 @Bind
 fun bindModel(data: String, position: Int)
 ```
 
 Now you should be ready to run a quick build of your project, and the Adapter will be generated for you. Now you can bind it to it's RecyclerView, likely somewhere in your activity or fragment. The function `attachMyAdapter()` is generated based on your adapter name and will return a `AdapterDataTarget`
 
-```
+```kotlin
 val dataTarget = recyclerView.withLinearLayoutManager()
                              .attachMyAdapter()
 ```
 
 Now of course you need to give this adapter the data it should show. This data should come in a generated type. For this example it's called `MyAdapterDataList`, a type safe wrapper around a list.
 
-```
+```kotlin
 val dataList = MyAdapterDataList()
 ```
 
 You can only add data to this list that conforms to the data that's able to be bound by the ViewHolders in this Adapter. For this example, since the Adapter only has one ViewHolder, which takes `Strings`, the `add()` functions on this DataList only accepts Strings.
 
-```
+```kotlin
 dataList.add("hello")
 dataList.addListOfString(listOf("hello", "world"))
 ```
 
 This list is passed to the Adapter using the `AdapterDataTarget` update function `updateDataset()`. This function should be the primary way to update data. For this data set, since it's not `DiffComparable`, it will simply reset the data and call `notifyDataSetChanged()` on the Adapter. For more complex usages, see below.
 
-```
+```kotlin
 dataTarget.updateDataset(dataList)
 ```
 
@@ -112,18 +112,18 @@ And that's it! And if you wanted to add another ViewHolder that takes `Ints` for
 ## AdapterDataTarget Functions
 
 To clear all items from an `AdapterDataTarget` just call `setEmpty()`
-```
+```kotlin
 dataTarget.setEmpty()
 ```
 
 To reset all items, just call `resetData()`
-```
+```kotlin
 dataTarget.resetData(datalist)
 ```
 
 What if I want to update a few dataset items without resetting the whole list? First we will need all dataset types within the list to implement the `DiffComparable` interface. Our class must implement an `equals()` method that checks for exact internal equality and an `isSame()` method that check for equality via unique identifier
 
-```
+```kotlin
 data class DiffPoko(val id : Int, val time: Long) : DiffComparable {
     override fun isSame(that: Any): Boolean {
         return if(that is DiffPoko) {
@@ -137,7 +137,7 @@ data class DiffPoko(val id : Int, val time: Long) : DiffComparable {
 
 We then need to enable list diffing on the `AdapterDataTarget`
 
-```
+```kotlin
 val target = recyclerView.withLinearLayoutManager()
                          .attachDiffTypeAdapter()
                          .enableDiff()
@@ -145,7 +145,7 @@ val target = recyclerView.withLinearLayoutManager()
 
 Once that's enabled, all we need to do is update the list using
 
-```
+```kotlin
 target.updateDataset(newDataList)
 ```
 
@@ -155,14 +155,14 @@ Velocidapter will update, delete, and move items as needed based off of the Diff
 
 `LiveData` is supported out of the box as well.
 
-```
+```kotlin
 val liveData = viewModel.getLiveData()
 recyclerView.withLinearLayoutManager()
             .attachMyAdapter()
             .observeLiveData(liveData, lifecycleOwner)
 ```
 or
-```
+```kotlin
 val observer = recyclerView.withLinearLayoutManager()
                            .attachMyAdapter()
                            .observeLiveDataForever(liveData)
