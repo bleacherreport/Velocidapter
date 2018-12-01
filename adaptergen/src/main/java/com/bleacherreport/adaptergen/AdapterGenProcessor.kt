@@ -98,35 +98,40 @@ class AdapterGenProcessor : AbstractProcessor() {
         val typeSpec = TypeSpec.classBuilder(name)
                 .superclass(ClassName("com.bleacherreport.adaptergenandroid", "ScopedDataList"))
 
-        val dataClassNames = mutableListOf<String>()
+        val dataClassNames = mutableListOf<ClassName>()
         viewHolderTypes.forEach { viewHolderType ->
-            val argumentClassName = argumentTypeMap[viewHolderType]!!
+            val argumentClass = argumentTypeMap[viewHolderType]!!
+            val argumentClassName = ClassName.bestGuess(argumentClass)
             dataClassNames.add(argumentClassName)
-            val simpleClassName = argumentClassName.split(".").last()
+            val simpleClassName = argumentClassName.simpleName
             typeSpec.addFunction(FunSpec.builder("add")
-                    .addParameter("model", ClassName("", argumentClassName))
-                    .addCode("listInternal.add(model)")
+                    .addParameter("model", argumentClassName)
+                    .addStatement("listInternal.add(model)")
                     .build())
 
             typeSpec.addFunction(FunSpec.builder("addListOf$simpleClassName")
-                    .addParameter("list", ClassName("", "kotlin.collections.List<$argumentClassName>"))
-                    .addCode("listInternal.addAll(list)")
+                    .addParameter("list", ClassName("kotlin.collections", "List")
+                            .parameterizedBy(argumentClassName))
+                    .addStatement("listInternal.addAll(list)")
                     .build())
         }
 
         typeSpec.addProperty(PropertySpec.builder("listClasses", ClassName("kotlin.collections", "List")
                 .parameterizedBy(ClassName("", "Class")
-                        .parameterizedBy(WildcardTypeName.STAR)))
-                    .initializer("listOf(${dataClassNames.joinToString(", ") { "$it::class.java" }})")
+                        .parameterizedBy(STAR)))
+                    .initializer("listOf(%L)", dataClassNames.map { CodeBlock.of("%T::class.java", it) }.joinToCode())
                     .addModifiers(KModifier.PRIVATE)
                     .build())
                 .build()
 
-        typeSpec.addProperty(PropertySpec.builder("isDiffComparable", Boolean::class.asClassName())
+        typeSpec.addProperty(PropertySpec.builder("isDiffComparable", Boolean::class)
                     .addModifiers(KModifier.OVERRIDE)
                     .delegate(CodeBlock.builder()
                             .beginControlFlow("lazy")
-                            .add("listClasses.all { com.bleacherreport.adaptergenandroid.DiffComparable::class.java.isAssignableFrom(it) }")
+                            .addStatement(
+                                "listClasses.all { %T::class.java.isAssignableFrom(it) }",
+                                ClassName("com.bleacherreport.adaptergenandroid", "DiffComparable")
+                            )
                             .endControlFlow()
                             .build())
                     .build())
@@ -137,7 +142,8 @@ class AdapterGenProcessor : AbstractProcessor() {
 
     private fun getDataTarget(name: String, dataListName: String): TypeSpec {
         val typeSpec = TypeSpec.interfaceBuilder(name)
-                .addSuperinterface(ClassName("", "com.bleacherreport.adaptergenandroid.AdapterDataTarget<$dataListName>"))
+                .addSuperinterface(ClassName("com.bleacherreport.adaptergenandroid", "AdapterDataTarget")
+                        .parameterizedBy(ClassName("", dataListName)))
 
         return typeSpec.build()
     }
@@ -145,86 +151,74 @@ class AdapterGenProcessor : AbstractProcessor() {
     private fun getAdapterKtx(adapterName: String, viewHolderTypes: Set<String>, layoutResIdMap: Map<String, Int>,
                               argumentTypeMap: Map<String, String>, dataListName: String): FunSpec {
         val funSpec = FunSpec.builder("attach$adapterName")
-                .receiver(ClassName("", "android.support.v7.widget.RecyclerView"))
-                .returns(ClassName("", "com.bleacherreport.adaptergenandroid.AdapterDataTarget<$dataListName>"))
-                .addCode("""
-                    |
-                    |val adapter = com.bleacherreport.adaptergenandroid.FunctionalAdapter<$dataListName>(
-                    |   ${getCreateViewHolderLambda(viewHolderTypes, layoutResIdMap)},
-                    |   ${getBindViewHolderLamda(viewHolderTypes, argumentTypeMap)},
-                    |   ${getItemTypeLambda(viewHolderTypes, argumentTypeMap)})
-                    |
-                    |this.adapter = adapter
-                    |return adapter
-                    |
-                    |""".trimMargin())
-
+                .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
+                .returns(ClassName("com.bleacherreport.adaptergenandroid", "AdapterDataTarget")
+                        .parameterizedBy(ClassName("", dataListName)))
+                .addStatement("val adapter = %T(⇥", ClassName("com.bleacherreport.adaptergenandroid", "FunctionalAdapter")
+                    .parameterizedBy(ClassName("", dataListName))
+                )
+                .addCode("%L,\n", getCreateViewHolderLambda(viewHolderTypes, layoutResIdMap))
+                .addCode("%L,\n", getBindViewHolderLamda(viewHolderTypes, argumentTypeMap))
+                .addCode("%L\n", getItemTypeLambda(viewHolderTypes, argumentTypeMap))
+                .addStatement("⇤)")
+                .addStatement("this.adapter = adapter")
+                .addStatement("return adapter")
         return funSpec.build()
     }
 
 
-    private fun getCreateViewHolderLambda(viewHolderTypes: Set<String>, layoutResIdMap: Map<String, Int>): String {
-        var code = """
-            |   { viewGroup, type ->
-        """.trimMargin()
-
-        viewHolderTypes.forEachIndexed { index, viewHolderClass ->
-            code += """
-                |
-                |        if(type == $index) {
-                |           val view = android.view.LayoutInflater.from(viewGroup.context).inflate(${layoutResIdMap[viewHolderClass]}, viewGroup, false)
-                |           return@FunctionalAdapter $viewHolderClass(view)
-                |        }
-                |""".trimMargin()
+    private fun getCreateViewHolderLambda(viewHolderTypes: Set<String>, layoutResIdMap: Map<String, Int>): CodeBlock {
+        return buildCodeBlock {
+            beginControlFlow("{ viewGroup, type ->")
+            viewHolderTypes.forEachIndexed { index, viewHolderClass ->
+                beginControlFlow("if (type == $index)")
+                addStatement(
+                    "val view = %T.from(viewGroup.context).inflate(%L, viewGroup, false)",
+                    ClassName("android.view", "LayoutInflater"),
+                    layoutResIdMap[viewHolderClass]
+                )
+                addStatement("return@FunctionalAdapter %T(view)", ClassName.bestGuess(viewHolderClass))
+                endControlFlow()
+            }
+            addStatement("throw RuntimeException(%S)", "Type not found ViewHolder set.")
+            endControlFlow()
         }
-
-        code += """
-            |       throw RuntimeException("Type not found ViewHolder set.")
-            |       }""".trimMargin()
-
-        return code
     }
 
 
-    private fun getBindViewHolderLamda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, String>): String {
-        var code = """
-            |   { viewHolder, position, dataset ->
-        """.trimMargin()
-
-        viewHolderTypes.forEach { viewHolderClass ->
-            code += """
-                |
-                |        if(viewHolder::class == $viewHolderClass::class) {
-                |           (viewHolder as $viewHolderClass).bindModel(
-                |               dataset[position] as ${argumentTypeMap[viewHolderClass]}, position)
-                |        }
-                |""".trimMargin()
+    private fun getBindViewHolderLamda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, String>): CodeBlock {
+        return buildCodeBlock {
+            beginControlFlow("{ viewHolder, position, dataset ->")
+            viewHolderTypes.forEach { viewHolderClass ->
+                val viewHolderClassName = ClassName.bestGuess(viewHolderClass)
+                beginControlFlow("if (viewHolder::class == %T::class)", viewHolderClassName)
+                addStatement(
+                    "(viewHolder as %T).bindModel(dataset[position] as %T, position)",
+                    viewHolderClassName,
+                    ClassName.bestGuess(argumentTypeMap.getValue(viewHolderClass))
+                )
+                endControlFlow()
+            }
+            endControlFlow()
         }
-        code += """
-            |       }""".trimMargin()
-        return code
     }
 
 
-    private fun getItemTypeLambda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, String>): String {
-        var code = """
-            |   { position, dataset ->
-            |       val dataItem = dataset[position]
-            |""".trimMargin()
-
-        viewHolderTypes.forEachIndexed { index, viewHolderClass ->
-            code += """
-                |
-                |       if(dataItem::class == ${argumentTypeMap[viewHolderClass]}::class) return@FunctionalAdapter $index
-                |""".trimMargin()
+    private fun getItemTypeLambda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, String>): CodeBlock {
+        return buildCodeBlock {
+            beginControlFlow("{ position, dataset ->")
+            addStatement("val dataItem = dataset[position]")
+            viewHolderTypes.forEachIndexed { index, viewHolderClass ->
+                beginControlFlow(
+                    "if (dataItem::class == %T::class)",
+                    ClassName.bestGuess(argumentTypeMap.getValue(viewHolderClass))
+                )
+                addStatement("return@FunctionalAdapter $index")
+                endControlFlow()
+            }
+            addStatement("return@FunctionalAdapter -1")
+            endControlFlow()
         }
-        code += """
-            |
-            |       return@FunctionalAdapter -1
-            |       }
-            |""".trimMargin()
-
-        return code
     }
 
     private fun getFullPath(element: Element): String {
