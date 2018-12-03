@@ -1,12 +1,22 @@
 # Velocidapter
 
+[ ![Download](https://api.bintray.com/packages/bleacherreport/velocidapter/velocidapter/images/download.svg) ](https://bintray.com/bleacherreport/velocidapter)
+
 A 100% Kotlin functional adapter code generation library
 
 The RecyclerView Adapter should do 2 things: inflate your ViewHolders in the right order and bind them with the right data. Maybe you like writing the same boilerplate functions for different ViewHolders and view types, but for everyone else, there's Velocidapter.
 
 Velocidapter writes your Adapters for you, and all you have to give it is ViewHolders and their data.
 
+## Installation
 
+Velocidapter is available on JCenter. Replace `{version}` below with the latest version (above).
+```groovy
+kapt 'com.bleacherreport:velocidapter:{version}'
+implementation 'com.bleacherreport:velocidapter-android:{version}'
+```
+ If you don't have `kapt` set up in your project already, follow [this](https://kotlinlang.org/docs/reference/kapt.html).
+ 
 ## Usage
 
 Velocidapter uses kapt annotation processing to generate adapter classes and type safe lists for you to update View Holders.
