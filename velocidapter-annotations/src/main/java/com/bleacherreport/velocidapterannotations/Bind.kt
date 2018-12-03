@@ -1,4 +1,4 @@
-package com.bleacherreport.velocidapteranotations
+package com.bleacherreport.velocidapterannotations
 
 /**
  * Used to specify the method in an annotated ViewHolder which will be call to bind the specified View

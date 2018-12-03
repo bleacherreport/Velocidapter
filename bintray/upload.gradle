@@ -71,7 +71,7 @@ bintray {
         licenses = allLicenses
         dryRun = false
         publish = false
-        override = false
+        override = true
         publicDownloadNumbers = true
         version {
             desc = libraryDescription

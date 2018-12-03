@@ -4,8 +4,8 @@ import android.annotation.SuppressLint
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import com.bleacherreport.velocidapterandroid.DiffComparable
-import com.bleacherreport.velocidapteranotations.Bind
-import com.bleacherreport.velocidapteranotations.ViewHolder
+import com.bleacherreport.velocidapterannotations.Bind
+import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.bleacherreport.velocidapterdemo.MainActivity
 import com.bleacherreport.velocidapterdemo.R
 import kotlinx.android.extensions.LayoutContainer

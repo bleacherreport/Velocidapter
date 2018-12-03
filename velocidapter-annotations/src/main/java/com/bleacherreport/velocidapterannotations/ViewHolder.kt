@@ -1,4 +1,4 @@
-package com.bleacherreport.velocidapteranotations
+package com.bleacherreport.velocidapterannotations
 
 /**
  * Used to flag a ViewHolder class for Adapter code generation.

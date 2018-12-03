@@ -1,7 +1,7 @@
 package com.bleacherreport.velocidapter
 
-import com.bleacherreport.velocidapteranotations.Bind
-import com.bleacherreport.velocidapteranotations.ViewHolder
+import com.bleacherreport.velocidapterannotations.Bind
+import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
