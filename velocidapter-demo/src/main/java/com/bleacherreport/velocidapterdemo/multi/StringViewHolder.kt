@@ -15,7 +15,7 @@ class StringViewHolder(override val containerView: View) : RecyclerView.ViewHold
 
     @SuppressLint("SetTextI18n")
     @Bind
-    fun bindModel(string: String, position: Int) {
+    fun nameOtherThanBindModel(string: String, position: Int) {
         textView.text = "$string @ position $position"
     }
 }
