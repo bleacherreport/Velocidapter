@@ -43,9 +43,9 @@ class VelocidapterProcessor : AbstractProcessor() {
             }
             val param1 = parameters[0]
 
-            if(param1 is DeclaredType) {
+            if (param1 is DeclaredType) {
                 var name = (param1.asElement() as TypeElement).qualifiedName.toString()
-                if(name == "java.lang.String") name = "kotlin.String"
+                if (name == "java.lang.String") name = "kotlin.String"
                 methodArgumentMap[element] = name
             } else {
                 methodArgumentMap[element] = resolvePrimitiveType((param1 as PrimitiveType).toString())
@@ -53,7 +53,7 @@ class VelocidapterProcessor : AbstractProcessor() {
 
         }
 
-        val argumentTypeMap = HashMap<String, String>()
+        val argumentTypeMap = HashMap<String, BindFunction>()
 
         roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)?.forEach { element ->
             println(element.simpleName)
@@ -70,7 +70,7 @@ class VelocidapterProcessor : AbstractProcessor() {
 
             element.enclosedElements.forEach { enclosedElement ->
                 methodArgumentMap[enclosedElement]?.let { argument ->
-                    argumentTypeMap[getFullPath(element)] = argument
+                    argumentTypeMap[getFullPath(element)] = BindFunction(enclosedElement.toString(), argument)
                 }
             }
         }
@@ -94,14 +94,14 @@ class VelocidapterProcessor : AbstractProcessor() {
         return true
     }
 
-    private fun getDataList(name: String, viewHolderTypes: Set<String>, argumentTypeMap: Map<String, String>): TypeSpec {
+    private fun getDataList(name: String, viewHolderTypes: Set<String>, argumentTypeMap: Map<String, BindFunction>): TypeSpec {
         val typeSpec = TypeSpec.classBuilder(name)
                 .superclass(ClassName("com.bleacherreport.velocidapterandroid", "ScopedDataList"))
 
         val dataClassNames = mutableListOf<ClassName>()
         viewHolderTypes.forEach { viewHolderType ->
-            val argumentClass = argumentTypeMap[viewHolderType]!!
-            val argumentClassName = ClassName.bestGuess(argumentClass)
+            val bindFunction = argumentTypeMap[viewHolderType]!!
+            val argumentClassName = ClassName.bestGuess(bindFunction.argumentType)
             dataClassNames.add(argumentClassName)
             val simpleClassName = argumentClassName.simpleName
             typeSpec.addFunction(FunSpec.builder("add")
@@ -119,22 +119,22 @@ class VelocidapterProcessor : AbstractProcessor() {
         typeSpec.addProperty(PropertySpec.builder("listClasses", ClassName("kotlin.collections", "List")
                 .parameterizedBy(ClassName("", "Class")
                         .parameterizedBy(STAR)))
-                    .initializer("listOf(%L)", dataClassNames.map { CodeBlock.of("%T::class.java", it) }.joinToCode())
-                    .addModifiers(KModifier.PRIVATE)
-                    .build())
+                .initializer("listOf(%L)", dataClassNames.map { CodeBlock.of("%T::class.java", it) }.joinToCode())
+                .addModifiers(KModifier.PRIVATE)
+                .build())
                 .build()
 
         typeSpec.addProperty(PropertySpec.builder("isDiffComparable", Boolean::class)
-                    .addModifiers(KModifier.OVERRIDE)
-                    .delegate(CodeBlock.builder()
-                            .beginControlFlow("lazy")
-                            .addStatement(
+                .addModifiers(KModifier.OVERRIDE)
+                .delegate(CodeBlock.builder()
+                        .beginControlFlow("lazy")
+                        .addStatement(
                                 "listClasses.all { %T::class.java.isAssignableFrom(it) }",
                                 ClassName("com.bleacherreport.velocidapterandroid", "DiffComparable")
-                            )
-                            .endControlFlow()
-                            .build())
-                    .build())
+                        )
+                        .endControlFlow()
+                        .build())
+                .build())
                 .build()
 
         return typeSpec.build()
@@ -149,13 +149,13 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
     private fun getAdapterKtx(adapterName: String, viewHolderTypes: Set<String>, layoutResIdMap: Map<String, Int>,
-                              argumentTypeMap: Map<String, String>, dataListName: String): FunSpec {
+                              argumentTypeMap: Map<String, BindFunction>, dataListName: String): FunSpec {
         val funSpec = FunSpec.builder("attach$adapterName")
                 .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
                 .returns(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
                         .parameterizedBy(ClassName("", dataListName)))
                 .addStatement("val adapter = %T(⇥", ClassName("com.bleacherreport.velocidapterandroid", "FunctionalAdapter")
-                    .parameterizedBy(ClassName("", dataListName))
+                        .parameterizedBy(ClassName("", dataListName))
                 )
                 .addCode("%L,\n", getCreateViewHolderLambda(viewHolderTypes, layoutResIdMap))
                 .addCode("%L,\n", getBindViewHolderLamda(viewHolderTypes, argumentTypeMap))
@@ -173,9 +173,9 @@ class VelocidapterProcessor : AbstractProcessor() {
             viewHolderTypes.forEachIndexed { index, viewHolderClass ->
                 beginControlFlow("if (type == $index)")
                 addStatement(
-                    "val view = %T.from(viewGroup.context).inflate(%L, viewGroup, false)",
-                    ClassName("android.view", "LayoutInflater"),
-                    layoutResIdMap[viewHolderClass]
+                        "val view = %T.from(viewGroup.context).inflate(%L, viewGroup, false)",
+                        ClassName("android.view", "LayoutInflater"),
+                        layoutResIdMap[viewHolderClass]
                 )
                 addStatement("return@FunctionalAdapter·%T(view)", ClassName.bestGuess(viewHolderClass))
                 endControlFlow()
@@ -186,16 +186,18 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
 
-    private fun getBindViewHolderLamda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, String>): CodeBlock {
+    private fun getBindViewHolderLamda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, BindFunction>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ viewHolder, position, dataset ->")
             viewHolderTypes.forEach { viewHolderClass ->
                 val viewHolderClassName = ClassName.bestGuess(viewHolderClass)
+                val bindFunction = argumentTypeMap[viewHolderClass]!!
                 beginControlFlow("if (viewHolder::class == %T::class)", viewHolderClassName)
                 addStatement(
-                    "(viewHolder as %T).bindModel(dataset[position] as %T, position)",
-                    viewHolderClassName,
-                    ClassName.bestGuess(argumentTypeMap.getValue(viewHolderClass))
+                        "(viewHolder as %T).%N(dataset[position] as %T, position)",
+                        viewHolderClassName,
+                        bindFunction.functionName,
+                        ClassName.bestGuess(bindFunction.argumentType)
                 )
                 endControlFlow()
             }
@@ -204,14 +206,14 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
 
-    private fun getItemTypeLambda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, String>): CodeBlock {
+    private fun getItemTypeLambda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, BindFunction>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ position, dataset ->")
             addStatement("val dataItem = dataset[position]")
             viewHolderTypes.forEachIndexed { index, viewHolderClass ->
                 beginControlFlow(
-                    "if (dataItem::class == %T::class)",
-                    ClassName.bestGuess(argumentTypeMap.getValue(viewHolderClass))
+                        "if (dataItem::class == %T::class)",
+                        ClassName.bestGuess(argumentTypeMap[viewHolderClass]!!.argumentType)
                 )
                 addStatement("return@FunctionalAdapter $index")
                 endControlFlow()
@@ -222,14 +224,14 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
     private fun getFullPath(element: Element): String {
-        return if(element is TypeElement) {
+        return if (element is TypeElement) {
             var enclosing = element
             while (enclosing.kind != ElementKind.PACKAGE) {
                 enclosing = enclosing.enclosingElement
             }
             val packageElement = enclosing as PackageElement
             var path = packageElement.qualifiedName.toString() + "." + element.simpleName.toString()
-            if(path == "java.lang.String") path = "kotlin.String"
+            if (path == "java.lang.String") path = "kotlin.String"
             path
         } else {
             resolvePrimitiveType((element as PrimitiveType).toString())
@@ -252,4 +254,9 @@ class VelocidapterProcessor : AbstractProcessor() {
     companion object {
         const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
     }
+}
+
+class BindFunction(_functionName: String, val argumentType: String) {
+    val functionName = _functionName
+        get() = field.split("(")[0]
 }
