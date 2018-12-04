@@ -177,7 +177,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                     ClassName("android.view", "LayoutInflater"),
                     layoutResIdMap[viewHolderClass]
                 )
-                addStatement("return@FunctionalAdapter %T(view)", ClassName.bestGuess(viewHolderClass))
+                addStatement("return@FunctionalAdapter·%T(view)", ClassName.bestGuess(viewHolderClass))
                 endControlFlow()
             }
             addStatement("throw RuntimeException(%S)", "Type not found ViewHolder set.")
