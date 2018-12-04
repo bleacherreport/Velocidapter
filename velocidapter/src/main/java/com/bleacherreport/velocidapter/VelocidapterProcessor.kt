@@ -101,9 +101,10 @@ class VelocidapterProcessor : AbstractProcessor() {
         val dataClassNames = mutableListOf<ClassName>()
         viewHolderTypes.forEach { viewHolderType ->
             val bindFunction = argumentTypeMap[viewHolderType]!!
-            val argumentClassName = ClassName.bestGuess(bindFunction.argumentType)
+            val argumentClass = bindFunction.argumentType
+            val simpleClassName = argumentClass.substringAfterLast(".")
+            val argumentClassName = ClassName("", argumentClass)
             dataClassNames.add(argumentClassName)
-            val simpleClassName = argumentClassName.simpleName
             typeSpec.addFunction(FunSpec.builder("add")
                     .addParameter("model", argumentClassName)
                     .addStatement("listInternal.add(model)")
@@ -177,7 +178,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                         ClassName("android.view", "LayoutInflater"),
                         layoutResIdMap[viewHolderClass]
                 )
-                addStatement("return@FunctionalAdapter·%T(view)", ClassName.bestGuess(viewHolderClass))
+                addStatement("return@FunctionalAdapter·%T(view)", ClassName("", viewHolderClass))
                 endControlFlow()
             }
             addStatement("throw RuntimeException(%S)", "Type not found ViewHolder set.")
@@ -190,14 +191,14 @@ class VelocidapterProcessor : AbstractProcessor() {
         return buildCodeBlock {
             beginControlFlow("{ viewHolder, position, dataset ->")
             viewHolderTypes.forEach { viewHolderClass ->
-                val viewHolderClassName = ClassName.bestGuess(viewHolderClass)
+                val viewHolderClassName = ClassName("", viewHolderClass)
                 val bindFunction = argumentTypeMap[viewHolderClass]!!
                 beginControlFlow("if (viewHolder::class == %T::class)", viewHolderClassName)
                 addStatement(
                         "(viewHolder as %T).%N(dataset[position] as %T, position)",
                         viewHolderClassName,
                         bindFunction.functionName,
-                        ClassName.bestGuess(bindFunction.argumentType)
+                        ClassName("", bindFunction.argumentType)
                 )
                 endControlFlow()
             }
@@ -213,7 +214,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             viewHolderTypes.forEachIndexed { index, viewHolderClass ->
                 beginControlFlow(
                         "if (dataItem::class == %T::class)",
-                        ClassName.bestGuess(argumentTypeMap[viewHolderClass]!!.argumentType)
+                        ClassName("", argumentTypeMap[viewHolderClass]!!.argumentType)
                 )
                 addStatement("return@FunctionalAdapter $index")
                 endControlFlow()
