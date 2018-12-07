@@ -17,7 +17,12 @@ import javax.lang.model.element.TypeElement
 import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.ExecutableType
 import javax.lang.model.type.PrimitiveType
+import javax.lang.model.type.TypeKind
 
+private const val BIND_INSTRUCTION = """
+A Velocidapter ViewHolder must have one @Bind annotated method which can be formatted one of two ways:
+  1) The method takes two argument - the first being your data model you bind with (Any), and the second being this element's position in the list (Int)
+  2) The method takes one argument - the data model you bind with (Any)"""
 
 @AutoService(Processor::class)
 class VelocidapterProcessor : AbstractProcessor() {
@@ -31,77 +36,78 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
     override fun process(set: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
-        val adapterMap = HashMap<String, HashSet<String>>()
-        val layoutResIdMap = HashMap<String, Int>()
-        val methodArgumentMap = HashMap<Element, String>()
-
-        roundEnv?.getElementsAnnotatedWith(Bind::class.java)?.forEach { element ->
-            val executableType = element.asType() as ExecutableType
-            val parameters = executableType.parameterTypes
-            if (parameters.size != 2) {
-                throw RuntimeException("@Bind method must take one Any and one Int")
-            }
-            val param1 = parameters[0]
-
-            if (param1 is DeclaredType) {
-                var name = (param1.asElement() as TypeElement).qualifiedName.toString()
-                if (name == "java.lang.String") name = "kotlin.String"
-                methodArgumentMap[element] = name
-            } else {
-                methodArgumentMap[element] = resolvePrimitiveType((param1 as PrimitiveType).toString())
-            }
-
-        }
-
-        val argumentTypeMap = HashMap<String, BindFunction>()
-
-        roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)?.forEach { element ->
-            println(element.simpleName)
-            val annotation = element.getAnnotation(ViewHolder::class.java)!!
-            annotation.adapters.forEach { adapter ->
-                if (!adapterMap.containsKey(adapter)) {
-                    adapterMap[adapter] = HashSet()
+        val bindFunctionList = roundEnv?.getElementsAnnotatedWith(Bind::class.java)?.map { it }
+        val adapterList = HashSet<BindableAdapter>()
+        roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)?.forEach { viewHolderElement ->
+            var bindFunction: BindFunction? = null
+            viewHolderElement.enclosedElements.forEach { enclosedElement ->
+                bindFunctionList?.find { it == enclosedElement }?.let { bindElement ->
+                    if (bindFunction != null) {
+                        throw VelocidapterException("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $BIND_INSTRUCTION")
+                    }
+                    bindFunction = createBindFunction(bindElement, viewHolderElement.simpleName.toString())
                 }
-
-                adapterMap[adapter]?.add(getFullPath(element))
             }
 
-            layoutResIdMap[getFullPath(element)] = annotation.layoutResId
+            if (bindFunction == null) {
+                throw VelocidapterException("${viewHolderElement.simpleName} is missing an @Bind method. $BIND_INSTRUCTION")
+            }
 
-            element.enclosedElements.forEach { enclosedElement ->
-                methodArgumentMap[enclosedElement]?.let { argument ->
-                    argumentTypeMap[getFullPath(element)] = BindFunction(enclosedElement.toString(), argument)
+            val annotation = viewHolderElement.getAnnotation(ViewHolder::class.java)!!
+            val viewHolder = BindableViewHolder(getFullPath(viewHolderElement), annotation.layoutResId, bindFunction!!)
+            annotation.adapters.forEach { adapterName ->
+                if (!adapterList.any { it.name == adapterName }) {
+                    adapterList.add(BindableAdapter(adapterName))
                 }
+                adapterList.find { it.name == adapterName }?.viewHolders?.add(viewHolder)
             }
         }
 
-        adapterMap.forEach { entry ->
+        adapterList.forEach { entry ->
+            val builder = FileSpec.builder("com.bleacherreport.velocidapter", entry.name)
 
-            val builder = FileSpec.builder("com.bleacherreport.velocidapter", entry.key)
-
-            val dataListName = entry.key + "DataList"
-            builder.addType(getDataList(dataListName, entry.value, argumentTypeMap))
-
-            val dataTargetName = entry.key + "DataTarget"
-            builder.addType(getDataTarget(dataTargetName, dataListName))
-
-            builder.addFunction(getAdapterKtx(entry.key, entry.value, layoutResIdMap, argumentTypeMap, dataListName))
+            builder.addType(getDataList(entry))
+            builder.addType(getDataTarget(entry))
+            builder.addFunction(getAdapterKtx(entry))
 
             val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
-            builder.build().writeTo(File(kaptKotlinGeneratedDir, "${entry.key}.kt"))
+            builder.build().writeTo(File(kaptKotlinGeneratedDir, "${entry.name}.kt"))
         }
 
         return true
     }
 
-    private fun getDataList(name: String, viewHolderTypes: Set<String>, argumentTypeMap: Map<String, BindFunction>): TypeSpec {
-        val typeSpec = TypeSpec.classBuilder(name)
+    private fun createBindFunction(element: Element, viewHolderName: String): BindFunction {
+        val parameters = (element.asType() as ExecutableType).parameterTypes
+        if (parameters.size != 2 && parameters.size != 1) {
+            throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName} does not have the right number of parameters. $BIND_INSTRUCTION")
+        }
+
+        val dataParam = parameters[0]
+        if (parameters.size > 1) {
+            if (parameters[1] !is PrimitiveType || parameters[1].kind != TypeKind.INT) {
+                throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName} second parameter is not an Int. $BIND_INSTRUCTION")
+            }
+        }
+
+        val dataArgumentType = if (dataParam is DeclaredType) {
+            var name = (dataParam.asElement() as TypeElement).qualifiedName.toString()
+            if (name == "java.lang.String") name = "kotlin.String"
+            name
+        } else {
+            resolvePrimitiveType((dataParam as PrimitiveType).toString())
+        }
+
+        return BindFunction(element, dataArgumentType, parameters.size > 1)
+    }
+
+    private fun getDataList(adapter: BindableAdapter): TypeSpec {
+        val typeSpec = TypeSpec.classBuilder(adapter.dataListName)
                 .superclass(ClassName("com.bleacherreport.velocidapterandroid", "ScopedDataList"))
 
         val dataClassNames = mutableListOf<ClassName>()
-        viewHolderTypes.forEach { viewHolderType ->
-            val bindFunction = argumentTypeMap[viewHolderType]!!
-            val argumentClass = bindFunction.argumentType
+        adapter.viewHolders.forEach { viewHolder ->
+            val argumentClass = viewHolder.bindFunction.argumentType
             val simpleClassName = argumentClass.substringAfterLast(".")
             val argumentClassName = ClassName("", argumentClass)
             dataClassNames.add(argumentClassName)
@@ -141,26 +147,25 @@ class VelocidapterProcessor : AbstractProcessor() {
         return typeSpec.build()
     }
 
-    private fun getDataTarget(name: String, dataListName: String): TypeSpec {
-        val typeSpec = TypeSpec.interfaceBuilder(name)
+    private fun getDataTarget(adapter: BindableAdapter): TypeSpec {
+        val typeSpec = TypeSpec.interfaceBuilder(adapter.dataTargetName)
                 .addSuperinterface(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
-                        .parameterizedBy(ClassName("", dataListName)))
+                        .parameterizedBy(ClassName("", adapter.dataListName)))
 
         return typeSpec.build()
     }
 
-    private fun getAdapterKtx(adapterName: String, viewHolderTypes: Set<String>, layoutResIdMap: Map<String, Int>,
-                              argumentTypeMap: Map<String, BindFunction>, dataListName: String): FunSpec {
-        val funSpec = FunSpec.builder("attach$adapterName")
+    private fun getAdapterKtx(adapter: BindableAdapter): FunSpec {
+        val funSpec = FunSpec.builder("attach${adapter.name}")
                 .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
                 .returns(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
-                        .parameterizedBy(ClassName("", dataListName)))
+                        .parameterizedBy(ClassName("", adapter.dataListName)))
                 .addStatement("val adapter = %T(⇥", ClassName("com.bleacherreport.velocidapterandroid", "FunctionalAdapter")
-                        .parameterizedBy(ClassName("", dataListName))
+                        .parameterizedBy(ClassName("", adapter.dataListName))
                 )
-                .addCode("%L,\n", getCreateViewHolderLambda(viewHolderTypes, layoutResIdMap))
-                .addCode("%L,\n", getBindViewHolderLamda(viewHolderTypes, argumentTypeMap))
-                .addCode("%L\n", getItemTypeLambda(viewHolderTypes, argumentTypeMap))
+                .addCode("%L,\n", getCreateViewHolderLambda(adapter.viewHolders))
+                .addCode("%L,\n", getBindViewHolderLamda(adapter.viewHolders))
+                .addCode("%L\n", getItemTypeLambda(adapter.viewHolders))
                 .addStatement("⇤)")
                 .addStatement("this.adapter = adapter")
                 .addStatement("return adapter")
@@ -168,17 +173,17 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
 
-    private fun getCreateViewHolderLambda(viewHolderTypes: Set<String>, layoutResIdMap: Map<String, Int>): CodeBlock {
+    private fun getCreateViewHolderLambda(viewHolders: Set<BindableViewHolder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ viewGroup, type ->")
-            viewHolderTypes.forEachIndexed { index, viewHolderClass ->
+            viewHolders.forEachIndexed { index, viewHolder ->
                 beginControlFlow("if (type == $index)")
                 addStatement(
                         "val view = %T.from(viewGroup.context).inflate(%L, viewGroup, false)",
                         ClassName("android.view", "LayoutInflater"),
-                        layoutResIdMap[viewHolderClass]
+                        viewHolder.layoutResId
                 )
-                addStatement("return@FunctionalAdapter·%T(view)", ClassName("", viewHolderClass))
+                addStatement("return@FunctionalAdapter·%T(view)", ClassName("", viewHolder.name))
                 endControlFlow()
             }
             addStatement("throw RuntimeException(%S)", "Type not found ViewHolder set.")
@@ -187,18 +192,22 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
 
-    private fun getBindViewHolderLamda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, BindFunction>): CodeBlock {
+    private fun getBindViewHolderLamda(viewHolders: Set<BindableViewHolder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ viewHolder, position, dataset ->")
-            viewHolderTypes.forEach { viewHolderClass ->
-                val viewHolderClassName = ClassName("", viewHolderClass)
-                val bindFunction = argumentTypeMap[viewHolderClass]!!
+            viewHolders.forEach { viewHolder ->
+                val viewHolderClassName = ClassName("", viewHolder.name)
+                val bindStatementFormat = if (viewHolder.bindFunction.hasPositionParameter) {
+                    "(viewHolder as %T).%N(dataset[position] as %T, position)"
+                } else {
+                    "(viewHolder as %T).%N(dataset[position] as %T)"
+                }
                 beginControlFlow("if (viewHolder::class == %T::class)", viewHolderClassName)
                 addStatement(
-                        "(viewHolder as %T).%N(dataset[position] as %T, position)",
+                        bindStatementFormat,
                         viewHolderClassName,
-                        bindFunction.functionName,
-                        ClassName("", bindFunction.argumentType)
+                        viewHolder.bindFunction.functionName,
+                        ClassName("", viewHolder.bindFunction.argumentType)
                 )
                 endControlFlow()
             }
@@ -207,14 +216,14 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
 
-    private fun getItemTypeLambda(viewHolderTypes: Set<String>, argumentTypeMap: Map<String, BindFunction>): CodeBlock {
+    private fun getItemTypeLambda(viewHolders: Set<BindableViewHolder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ position, dataset ->")
             addStatement("val dataItem = dataset[position]")
-            viewHolderTypes.forEachIndexed { index, viewHolderClass ->
+            viewHolders.forEachIndexed { index, viewHolder ->
                 beginControlFlow(
                         "if (dataItem::class == %T::class)",
-                        ClassName("", argumentTypeMap[viewHolderClass]!!.argumentType)
+                        ClassName("", viewHolder.bindFunction.argumentType)
                 )
                 addStatement("return@FunctionalAdapter $index")
                 endControlFlow()
@@ -257,7 +266,18 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 }
 
-class BindFunction(_functionName: String, val argumentType: String) {
-    val functionName = _functionName
-        get() = field.split("(")[0]
+class VelocidapterException(override val message: String?) : java.lang.Exception(message)
+
+class BindFunction(val element: Element, val argumentType: String, val hasPositionParameter: Boolean) {
+    val functionName: String
+        get() = element.simpleName.toString().split("(")[0]
 }
+
+data class BindableAdapter(val name: String, val viewHolders: MutableSet<BindableViewHolder> = LinkedHashSet()) {
+    val dataListName
+        get() = name + "DataList"
+    val dataTargetName
+        get() = name + "DataTarget"
+}
+
+data class BindableViewHolder(val name: String, val layoutResId: Int, val bindFunction: BindFunction)

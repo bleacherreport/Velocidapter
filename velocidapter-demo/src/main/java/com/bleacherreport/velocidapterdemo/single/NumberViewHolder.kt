@@ -13,7 +13,7 @@ import kotlinx.android.synthetic.main.item_number.*
 class NumberViewHolder(override val containerView: View) : RecyclerView.ViewHolder(containerView), LayoutContainer {
 
     @Bind
-    fun bindModel(number: Int, position: Int) {
+    fun bindModel(number: Int) {
         textView.text = number.toString()
     }
 }
