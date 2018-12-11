@@ -62,7 +62,7 @@ class NumberViewHolder(override val containerView: View) :
         RecyclerView.ViewHolder(containerView), LayoutContainer {
     
     @Bind
-    fun bindModel(data: Int) {
+    fun bindModel(data: MyDataModel) {
         textView.text = "$data 456"
     }
 }
