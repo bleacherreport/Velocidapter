@@ -62,7 +62,7 @@ class NumberViewHolder(override val containerView: View) :
         RecyclerView.ViewHolder(containerView), LayoutContainer {
     
     @Bind
-    fun bindModel(data: Int, position: Int) {
+    fun bindModel(data: MyDataModel) {
         textView.text = "$data 456"
     }
 }
@@ -84,7 +84,9 @@ class StringViewHolder(override val containerView: View) :
         RecyclerView.ViewHolder(containerView), LayoutContainer
 ```
 
-Your ViewHolder needs to have a way to be bound with data. You need to annotate any function within the ViewHolder with `@Bind`. The function can have any name, but must have 2 parameters, the first can be any type and is your only method of binding data to this ViewHolder. The second is an `Int` and indicates this item's position in the Adapter.
+Your ViewHolder needs to have a way to be bound with data. You need to annotate any function within the ViewHolder with `@Bind`. The function can have any name and can take one or two parameters.
+1. The first can be of Any type and is your method of binding data to this ViewHolder.
+2. The second must be an Int indicates the position of this element in the list. This parameter is optional.
 
 ```kotlin
 @Bind
