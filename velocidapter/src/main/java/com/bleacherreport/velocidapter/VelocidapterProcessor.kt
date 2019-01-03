@@ -109,7 +109,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         adapter.viewHolders.forEach { viewHolder ->
             val argumentClass = viewHolder.bindFunction.argumentType
             val simpleClassName = argumentClass.substringAfterLast(".")
-            val argumentClassName = ClassName("", argumentClass)
+            val argumentClassName = ClassName.bestGuess(argumentClass)
             dataClassNames.add(argumentClassName)
             typeSpec.addFunction(FunSpec.builder("add")
                     .addParameter("model", argumentClassName)
@@ -124,7 +124,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         }
 
         typeSpec.addProperty(PropertySpec.builder("listClasses", ClassName("kotlin.collections", "List")
-                .parameterizedBy(ClassName("", "Class")
+                .parameterizedBy(ClassName.bestGuess("Class")
                         .parameterizedBy(STAR)))
                 .initializer("listOf(%L)", dataClassNames.map { CodeBlock.of("%T::class.java", it) }.joinToCode())
                 .addModifiers(KModifier.PRIVATE)
@@ -159,9 +159,9 @@ class VelocidapterProcessor : AbstractProcessor() {
         val funSpec = FunSpec.builder("attach${adapter.name}")
                 .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
                 .returns(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
-                        .parameterizedBy(ClassName("", adapter.dataListName)))
+                        .parameterizedBy(ClassName.bestGuess(adapter.dataListName)))
                 .addStatement("val adapter = %T(⇥", ClassName("com.bleacherreport.velocidapterandroid", "FunctionalAdapter")
-                        .parameterizedBy(ClassName("", adapter.dataListName))
+                        .parameterizedBy(ClassName.bestGuess(adapter.dataListName))
                 )
                 .addCode("%L,\n", getCreateViewHolderLambda(adapter.viewHolders))
                 .addCode("%L,\n", getBindViewHolderLamda(adapter.viewHolders))
@@ -183,7 +183,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                         ClassName("android.view", "LayoutInflater"),
                         viewHolder.layoutResId
                 )
-                addStatement("return@FunctionalAdapter·%T(view)", ClassName("", viewHolder.name))
+                addStatement("return@FunctionalAdapter·%T(view)", ClassName.bestGuess(viewHolder.name))
                 endControlFlow()
             }
             addStatement("throw RuntimeException(%S)", "Type not found ViewHolder set.")
@@ -196,7 +196,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         return buildCodeBlock {
             beginControlFlow("{ viewHolder, position, dataset ->")
             viewHolders.forEach { viewHolder ->
-                val viewHolderClassName = ClassName("", viewHolder.name)
+                val viewHolderClassName = ClassName.bestGuess(viewHolder.name)
                 val bindStatementFormat = if (viewHolder.bindFunction.hasPositionParameter) {
                     "(viewHolder as %T).%N(dataset[position] as %T, position)"
                 } else {
@@ -207,7 +207,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                         bindStatementFormat,
                         viewHolderClassName,
                         viewHolder.bindFunction.functionName,
-                        ClassName("", viewHolder.bindFunction.argumentType)
+                        ClassName.bestGuess(viewHolder.bindFunction.argumentType)
                 )
                 endControlFlow()
             }
@@ -223,7 +223,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             viewHolders.forEachIndexed { index, viewHolder ->
                 beginControlFlow(
                         "if (dataItem::class == %T::class)",
-                        ClassName("", viewHolder.bindFunction.argumentType)
+                        ClassName.bestGuess(viewHolder.bindFunction.argumentType)
                 )
                 addStatement("return@FunctionalAdapter $index")
                 endControlFlow()
