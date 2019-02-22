@@ -52,6 +52,7 @@ class FunctionalAdapter<T : ScopedDataList>(
 
     override fun setEmpty() {
         currentDataset = emptyList()
+        notifyDataSetChanged()
     }
 
     private fun checkIsDiffComparable(dataSet: T): Boolean {
