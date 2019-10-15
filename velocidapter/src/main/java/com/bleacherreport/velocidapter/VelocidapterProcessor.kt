@@ -1,6 +1,8 @@
 package com.bleacherreport.velocidapter
 
 import com.bleacherreport.velocidapterannotations.Bind
+import com.bleacherreport.velocidapterannotations.OnAttachToWindow
+import com.bleacherreport.velocidapterannotations.OnDetachFromWindow
 import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
@@ -37,15 +39,36 @@ class VelocidapterProcessor : AbstractProcessor() {
 
     override fun process(set: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
         val bindFunctionList = roundEnv?.getElementsAnnotatedWith(Bind::class.java)?.map { it }
+        val attachFunctionList = roundEnv?.getElementsAnnotatedWith(OnAttachToWindow::class.java)?.map { it }
+        val detatchFunctionList = roundEnv?.getElementsAnnotatedWith(OnDetachFromWindow::class.java)?.map { it }
+
         val adapterList = HashSet<BindableAdapter>()
         roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)?.forEach { viewHolderElement ->
+
             var bindFunction: BindFunction? = null
+            var attachFunction: AttachFunction? = null
+            var detachFunction: DetachFunction? = null
+
             viewHolderElement.enclosedElements.forEach { enclosedElement ->
                 bindFunctionList?.find { it == enclosedElement }?.let { bindElement ->
                     if (bindFunction != null) {
                         throw VelocidapterException("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $BIND_INSTRUCTION")
                     }
                     bindFunction = createBindFunction(bindElement, viewHolderElement.simpleName.toString())
+                }
+
+                attachFunctionList?.find { it == enclosedElement }?.let { attachElement ->
+                    if (attachFunction != null) {
+                        throw VelocidapterException("${viewHolderElement.simpleName} has multiple @OnAttachToWindow annotated methods.")
+                    }
+                    attachFunction = AttachFunction(attachElement)
+                }
+
+                detatchFunctionList?.find { it == enclosedElement }?.let { detachElement ->
+                    if (detachFunction != null) {
+                        throw VelocidapterException("${viewHolderElement.simpleName} has multiple @OnDetachFromWindow annotated methods.")
+                    }
+                    detachFunction = DetachFunction(detachElement)
                 }
             }
 
@@ -54,7 +77,8 @@ class VelocidapterProcessor : AbstractProcessor() {
             }
 
             val annotation = viewHolderElement.getAnnotation(ViewHolder::class.java)!!
-            val viewHolder = BindableViewHolder(getFullPath(viewHolderElement), annotation.layoutResId, bindFunction!!)
+            val viewHolder = BindableViewHolder(getFullPath(viewHolderElement), annotation.layoutResId,
+                    bindFunction!!, attachFunction, detachFunction)
             annotation.adapters.forEach { adapterName ->
                 if (!adapterList.any { it.name == adapterName }) {
                     adapterList.add(BindableAdapter(adapterName))
@@ -165,7 +189,9 @@ class VelocidapterProcessor : AbstractProcessor() {
                 )
                 .addCode("%L,\n", getCreateViewHolderLambda(adapter.viewHolders))
                 .addCode("%L,\n", getBindViewHolderLamda(adapter.viewHolders))
-                .addCode("%L\n", getItemTypeLambda(adapter.viewHolders))
+                .addCode("%L,\n", getItemTypeLambda(adapter.viewHolders))
+                .addCode("%L,\n", getAttachLambda(adapter.viewHolders))
+                .addCode("%L\n", getDetachLambda(adapter.viewHolders))
                 .addStatement("⇤)")
                 .addStatement("this.adapter = adapter")
                 .addStatement("return adapter")
@@ -233,6 +259,45 @@ class VelocidapterProcessor : AbstractProcessor() {
         }
     }
 
+    private fun getAttachLambda(viewHolders: Set<BindableViewHolder>): CodeBlock {
+        return buildCodeBlock {
+            beginControlFlow("{ viewHolder ->")
+            viewHolders.forEachIndexed { index, viewHolder ->
+                if (viewHolder.attachFunction != null) {
+                    beginControlFlow(
+                            "if (viewHolder::class == %T::class)",
+                            ClassName.bestGuess(viewHolder.name)
+                    )
+                    addStatement("(viewHolder as %T).%N()",
+                            ClassName.bestGuess(viewHolder.name),
+                            viewHolder.attachFunction.functionName)
+                    endControlFlow()
+                }
+            }
+            endControlFlow()
+        }
+    }
+
+    private fun getDetachLambda(viewHolders: Set<BindableViewHolder>): CodeBlock {
+        return buildCodeBlock {
+            beginControlFlow("{ viewHolder ->")
+            viewHolders.forEachIndexed { index, viewHolder ->
+                if (viewHolder.detachFunction != null) {
+                    beginControlFlow(
+                            "if (viewHolder::class == %T::class)",
+                            ClassName.bestGuess(viewHolder.name)
+                    )
+                    addStatement("(viewHolder as %T).%N()",
+                            ClassName.bestGuess(viewHolder.name),
+                            viewHolder.detachFunction.functionName)
+                    endControlFlow()
+                }
+            }
+            endControlFlow()
+        }
+    }
+
+
     private fun getFullPath(element: Element): String {
         return if (element is TypeElement) {
             var enclosing = element
@@ -273,6 +338,18 @@ class BindFunction(val element: Element, val argumentType: String, val hasPositi
         get() = element.simpleName.toString().split("(")[0]
 }
 
+class AttachFunction(val element: Element) {
+    val functionName: String
+        get() = element.simpleName.toString().split("(")[0]
+}
+
+
+class DetachFunction(val element: Element) {
+    val functionName: String
+        get() = element.simpleName.toString().split("(")[0]
+}
+
+
 data class BindableAdapter(val name: String, val viewHolders: MutableSet<BindableViewHolder> = LinkedHashSet()) {
     val dataListName
         get() = name + "DataList"
@@ -280,4 +357,5 @@ data class BindableAdapter(val name: String, val viewHolders: MutableSet<Bindabl
         get() = name + "DataTarget"
 }
 
-data class BindableViewHolder(val name: String, val layoutResId: Int, val bindFunction: BindFunction)
+data class BindableViewHolder(val name: String, val layoutResId: Int, val bindFunction: BindFunction,
+                              val attachFunction: AttachFunction?, val detachFunction: DetachFunction?)

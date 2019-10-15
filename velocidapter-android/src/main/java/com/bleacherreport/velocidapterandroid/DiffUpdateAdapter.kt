@@ -1,6 +1,7 @@
 package com.bleacherreport.velocidapterandroid
 
 import android.view.ViewGroup
+import android.view.Window
 import androidx.recyclerview.widget.RecyclerView
 
 /**
@@ -9,7 +10,9 @@ import androidx.recyclerview.widget.RecyclerView
 class FunctionalAdapter<T : ScopedDataList>(
         private val onCreateViewHolder: (ViewGroup, Int) -> RecyclerView.ViewHolder,
         private val onBindViewHolder: (RecyclerView.ViewHolder, Int, List<Any>) -> Unit,
-        private val getItemViewType: (Int, List<Any>) -> Int) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), AdapterDataTarget<T> {
+        private val getItemViewType: (Int, List<Any>) -> Int,
+        private val onAttachToWindow: ((RecyclerView.ViewHolder) -> Unit)?,
+        private val onDetachFromWindow: ((RecyclerView.ViewHolder) -> Unit)?) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), AdapterDataTarget<T> {
 
     private var currentDataset = listOf<Any>()
     override var shouldRunDiff = false
@@ -60,5 +63,15 @@ class FunctionalAdapter<T : ScopedDataList>(
             isDiffComparable = shouldRunDiff && dataSet.isDiffComparable
         }
         return isDiffComparable ?: false
+    }
+
+    override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        onAttachToWindow?.invoke(holder)
+    }
+
+    override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        onDetachFromWindow?.invoke(holder)
     }
 }
