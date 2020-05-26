@@ -26,7 +26,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
 
-    api project(':velocidapter-annotations')
+    api 'com.bleacherreport:velocidapter-annotations:1.3.0'
 }
 
 repositories {
