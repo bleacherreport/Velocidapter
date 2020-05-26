@@ -10,7 +10,6 @@ import androidx.recyclerview.widget.RecyclerView
 class FunctionalAdapter<T : ScopedDataList>(
         private val onCreateViewHolder: (ViewGroup, Int) -> RecyclerView.ViewHolder,
         private val onBindViewHolder: (RecyclerView.ViewHolder, Int, List<Any>) -> Unit,
-        private val onUnbindViewHolder: (RecyclerView.ViewHolder) -> Unit,
         private val getItemViewType: (Int, List<Any>) -> Int,
         private val onAttachToWindow: ((RecyclerView.ViewHolder) -> Unit)?,
         private val onDetachFromWindow: ((RecyclerView.ViewHolder) -> Unit)?) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), AdapterDataTarget<T> {
@@ -64,11 +63,6 @@ class FunctionalAdapter<T : ScopedDataList>(
             isDiffComparable = shouldRunDiff && dataSet.isDiffComparable
         }
         return isDiffComparable ?: false
-    }
-
-    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
-        super.onViewRecycled(holder)
-        onUnbindViewHolder.invoke(holder)
     }
 
     override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {

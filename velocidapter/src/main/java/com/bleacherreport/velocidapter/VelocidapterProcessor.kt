@@ -1,6 +1,9 @@
 package com.bleacherreport.velocidapter
 
-import com.bleacherreport.velocidapterannotations.*
+import com.bleacherreport.velocidapterannotations.Bind
+import com.bleacherreport.velocidapterannotations.OnAttachToWindow
+import com.bleacherreport.velocidapterannotations.OnDetachFromWindow
+import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -27,11 +30,7 @@ A Velocidapter ViewHolder must have one @Bind annotated method which can be form
 class VelocidapterProcessor : AbstractProcessor() {
 
     override fun getSupportedAnnotationTypes(): MutableSet<String> {
-        return mutableSetOf(ViewHolder::class.java.name,
-            Bind::class.java.name,
-            Unbind::class.java.name,
-            OnAttachToWindow::class.java.name,
-            OnDetachFromWindow::class.java.name)
+        return mutableSetOf(ViewHolder::class.java.name, Bind::class.java.name)
     }
 
     override fun getSupportedSourceVersion(): SourceVersion {
@@ -40,7 +39,6 @@ class VelocidapterProcessor : AbstractProcessor() {
 
     override fun process(set: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
         val bindFunctionList = roundEnv?.getElementsAnnotatedWith(Bind::class.java)?.map { it }
-        val unbindFunctionList = roundEnv?.getElementsAnnotatedWith(Unbind::class.java)?.map { it }
         val attachFunctionList = roundEnv?.getElementsAnnotatedWith(OnAttachToWindow::class.java)?.map { it }
         val detatchFunctionList = roundEnv?.getElementsAnnotatedWith(OnDetachFromWindow::class.java)?.map { it }
 
@@ -48,7 +46,6 @@ class VelocidapterProcessor : AbstractProcessor() {
         roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)?.forEach { viewHolderElement ->
 
             var bindFunction: BindFunction? = null
-            var unbindFunction: UnbindFunction? = null
             var attachFunction: AttachFunction? = null
             var detachFunction: DetachFunction? = null
 
@@ -58,13 +55,6 @@ class VelocidapterProcessor : AbstractProcessor() {
                         throw VelocidapterException("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $BIND_INSTRUCTION")
                     }
                     bindFunction = createBindFunction(bindElement, viewHolderElement.simpleName.toString())
-                }
-
-                unbindFunctionList?.find { it == enclosedElement }?.let { bindElement ->
-                    if (unbindFunction != null) {
-                        throw VelocidapterException("${viewHolderElement.simpleName} has more than one @Unbind annotated method.")
-                    }
-                    unbindFunction = UnbindFunction(bindElement)
                 }
 
                 attachFunctionList?.find { it == enclosedElement }?.let { attachElement ->
@@ -88,7 +78,7 @@ class VelocidapterProcessor : AbstractProcessor() {
 
             val annotation = viewHolderElement.getAnnotation(ViewHolder::class.java)!!
             val viewHolder = BindableViewHolder(getFullPath(viewHolderElement), annotation.layoutResId,
-                    bindFunction!!, unbindFunction, attachFunction, detachFunction)
+                    bindFunction!!, attachFunction, detachFunction)
             annotation.adapters.forEach { adapterName ->
                 if (!adapterList.any { it.name == adapterName }) {
                     adapterList.add(BindableAdapter(adapterName))
@@ -134,7 +124,6 @@ class VelocidapterProcessor : AbstractProcessor() {
 
         return BindFunction(element, dataArgumentType, parameters.size > 1)
     }
-
 
     private fun getDataList(adapter: BindableAdapter): TypeSpec {
         val typeSpec = TypeSpec.classBuilder(adapter.dataListName)
@@ -200,7 +189,6 @@ class VelocidapterProcessor : AbstractProcessor() {
                 )
                 .addCode("%L,\n", getCreateViewHolderLambda(adapter.viewHolders))
                 .addCode("%L,\n", getBindViewHolderLamda(adapter.viewHolders))
-                .addCode("%L,\n", getUnbindLambda(adapter.viewHolders))
                 .addCode("%L,\n", getItemTypeLambda(adapter.viewHolders))
                 .addCode("%L,\n", getAttachLambda(adapter.viewHolders))
                 .addCode("%L\n", getDetachLambda(adapter.viewHolders))
@@ -267,25 +255,6 @@ class VelocidapterProcessor : AbstractProcessor() {
                 endControlFlow()
             }
             addStatement("return@FunctionalAdapter -1")
-            endControlFlow()
-        }
-    }
-
-    private fun getUnbindLambda(viewHolders: Set<BindableViewHolder>): CodeBlock {
-        return buildCodeBlock {
-            beginControlFlow("{ viewHolder ->")
-            viewHolders.forEachIndexed { index, viewHolder ->
-                if (viewHolder.unbindFunction != null) {
-                    beginControlFlow(
-                        "if (viewHolder::class == %T::class)",
-                        ClassName.bestGuess(viewHolder.name)
-                    )
-                    addStatement("(viewHolder as %T).%N()",
-                        ClassName.bestGuess(viewHolder.name),
-                        viewHolder.unbindFunction.functionName)
-                    endControlFlow()
-                }
-            }
             endControlFlow()
         }
     }
@@ -369,12 +338,6 @@ class BindFunction(val element: Element, val argumentType: String, val hasPositi
         get() = element.simpleName.toString().split("(")[0]
 }
 
-class UnbindFunction(val element: Element) {
-    val functionName: String
-        get() = element.simpleName.toString().split("(")[0]
-}
-
-
 class AttachFunction(val element: Element) {
     val functionName: String
         get() = element.simpleName.toString().split("(")[0]
@@ -394,9 +357,5 @@ data class BindableAdapter(val name: String, val viewHolders: MutableSet<Bindabl
         get() = name + "DataTarget"
 }
 
-data class BindableViewHolder(val name: String,
-                              val layoutResId: Int,
-                              val bindFunction: BindFunction,
-                              val unbindFunction: UnbindFunction?,
-                              val attachFunction: AttachFunction?,
-                              val detachFunction: DetachFunction?)
+data class BindableViewHolder(val name: String, val layoutResId: Int, val bindFunction: BindFunction,
+                              val attachFunction: AttachFunction?, val detachFunction: DetachFunction?)
