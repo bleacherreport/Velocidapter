@@ -159,7 +159,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         }
 
         typeSpec.addProperty(PropertySpec.builder("listClasses", ClassName("kotlin.collections", "List")
-                .parameterizedBy(ClassName.bestGuess("Class")
+                .parameterizedBy(ClassName("java.lang", "Class")
                         .parameterizedBy(STAR)))
                 .initializer("listOf(%L)", dataClassNames.map { CodeBlock.of("%T::class.java", it) }.joinToCode())
                 .addModifiers(KModifier.PRIVATE)
@@ -185,7 +185,7 @@ class VelocidapterProcessor : AbstractProcessor() {
     private fun getDataTarget(adapter: BindableAdapter): TypeSpec {
         val typeSpec = TypeSpec.interfaceBuilder(adapter.dataTargetName)
                 .addSuperinterface(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
-                        .parameterizedBy(ClassName("", adapter.dataListName)))
+                        .parameterizedBy(ClassName("com.bleacherreport.velocidapter", adapter.dataListName)))
 
         return typeSpec.build()
     }
