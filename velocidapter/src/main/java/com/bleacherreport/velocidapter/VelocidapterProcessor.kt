@@ -14,7 +14,6 @@ import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.ExecutableType
 import javax.lang.model.type.PrimitiveType
 import javax.lang.model.type.TypeKind
-import javax.tools.Diagnostic
 
 private const val VELOCIDAPTER_PATH = "com.bleacherreport.velocidapterandroid"
 private const val VIEW_HOLDER_VIEW_BINDING = "VelocidapterViewHolder"
@@ -32,14 +31,6 @@ A Velocidapter ViewBinding method must have one @ViewHolderBind annotated method
 
 @AutoService(Processor::class)
 class VelocidapterProcessor : AbstractProcessor() {
-
-    fun printMessage(diagnostic: Diagnostic.Kind, charSequence: CharSequence) {
-        processingEnv.messager.printMessage(diagnostic, "$charSequence\r\n")
-    }
-
-    fun printMessage(diagnostic: Diagnostic.Kind, charSequence: CharSequence, element: Element) {
-        processingEnv.messager.printMessage(diagnostic, "$charSequence\r\n", element)
-    }
 
     override fun getSupportedAnnotationTypes(): MutableSet<String> {
         return mutableSetOf(ViewHolder::class.java.name,
@@ -109,6 +100,7 @@ class VelocidapterProcessor : AbstractProcessor() {
 
         }
 
+        // all ViewHolder
         roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)?.forEach { viewHolderElement ->
             getFunctions(viewHolderElement) { bindFunction, unbindFunction, attachFunction, detachFunction ->
                 val annotation = viewHolderElement.getAnnotation(ViewHolder::class.java)!!
@@ -131,11 +123,15 @@ class VelocidapterProcessor : AbstractProcessor() {
             }
         }
 
+        // all ViewHolderBind
         roundEnv?.getElementsAnnotatedWith(ViewHolderBind::class.java)?.forEach { viewHolderElement ->
             getFunctions(viewHolderElement) { bindFunction, unbindFunction, attachFunction, detachFunction ->
                 val annotation = viewHolderElement.getAnnotation(ViewHolderBind::class.java)!!
                 val name = getFullPath(viewHolderElement)
+
+                // fetch first viewBinding from constructor
                 val binding = viewHolderElement.enclosedElements
+                    // get constructors
                     .mapNotNull {
                         when (it.kind == ElementKind.CONSTRUCTOR) {
                             true -> it as ExecutableElement
@@ -143,11 +139,13 @@ class VelocidapterProcessor : AbstractProcessor() {
                         }
                     }
                     .mapNotNull { element ->
+                        // must have one param
                         if (element.parameters.size != 1) return@mapNotNull null
                         val executableType = (element.asType() as ExecutableType)
                         val parameters = executableType.parameterTypes
                         val viewBindingParam = parameters.getOrNull(0) as? DeclaredType
                         val viewBindingTypeElement = (viewBindingParam?.asElement() as? TypeElement)
+                        // param must be a view binding
                         if (viewBindingTypeElement?.interfaces?.firstOrNull()
                                 ?.toString() != "androidx.viewbinding.ViewBinding"
                         ) return@mapNotNull null
@@ -155,6 +153,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                             ?: return@mapNotNull null
                         viewBindingTypeElement
                     }!!.first()
+
                 val viewHolder = BindableLayoutViewHolder(getFullPath(viewHolderElement),
                     bindFunction!!, unbindFunction, attachFunction, detachFunction) {
                     addStatement(
@@ -174,21 +173,23 @@ class VelocidapterProcessor : AbstractProcessor() {
             }
         }
 
+        // all ViewBinding
         roundEnv?.getElementsAnnotatedWith(ViewBinding::class.java)?.forEach { viewHolderBindingElement ->
             if (viewHolderBindingElement.kind != ElementKind.METHOD)
                 throw VelocidapterException("@ViewHolderBind for ${viewHolderBindingElement.methodFullName()} is required to be a method")
 
-            val bindFunction = createViewHolderBindFunction(viewHolderBindingElement)
+            val bindFunction = createViewBindingFunction(viewHolderBindingElement)
             val annotation = viewHolderBindingElement.getAnnotation(ViewBinding::class.java)!!
 
-            val viewHolder = ViewBindableViewHolder(VIEW_HOLDER_VIEW_BINDING_FULL,
+            val viewHolder = ViewBindableViewHolder(
+                VIEW_HOLDER_VIEW_BINDING_FULL,
                 ClassName.bestGuess(bindFunction.bindingType),
                 bindFunction,
                 unbindFunction = null,
                 attachFunction = null,
                 detachFunction = null
             )
-            printMessage(Diagnostic.Kind.WARNING, viewHolder.toString())
+
             annotation.adapters.forEach { adapterName ->
                 if (!adapterList.any { it.name == adapterName }) {
                     adapterList.add(BindableAdapter(adapterName))
@@ -212,7 +213,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         return true
     }
 
-    private fun createViewHolderBindFunction(element: Element): ViewBindFunction {
+    private fun createViewBindingFunction(element: Element): ViewBindFunction {
         val executableType = (element.asType() as ExecutableType)
         val parameters = executableType.parameterTypes
 
@@ -477,7 +478,6 @@ class VelocidapterProcessor : AbstractProcessor() {
         }
     }
 
-
     private fun getFullPath(element: Element): String {
         return if (element is TypeElement) {
             var enclosing = element
@@ -541,7 +541,6 @@ class FunctionName(
 ) {
     companion object {
         fun from(element: Element) = FunctionName(element.simpleName.toString().split("(")[0])
-        fun fromViewBind(functionName: String) = FunctionName(functionName)
     }
 }
 
