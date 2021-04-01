@@ -30,7 +30,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
 
-    api 'com.bleacherreport:velocidapter-annotations:1.4.2'
+    implementation project(':velocidapter-annotations')
 
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.3.0'
 }
