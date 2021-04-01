@@ -8,14 +8,14 @@ import com.bleacherreport.velocidapterdemo.MainActivity
 import com.bleacherreport.velocidapterdemo.databinding.ItemNumberBinding
 
 @ViewBinding(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter])
-fun ItemNumberBinding.bind(number: Int) {
-    textView.text = number.toString()
+fun ItemNumberBinding.bind(number: NumberViewItemBindingExtension) {
+    textView.text = number.number
 }
 
 object Test {
     @ViewBinding(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], isExtensionFunction = false)
-    fun bind(itemNumberBinding: ItemNumberBinding, number: Float) {
-        itemNumberBinding.textView.text = number.toString()
+    fun bind(itemNumberBinding: ItemNumberBinding, number: Int) {
+        itemNumberBinding.textView.text = number.toString() + " bind method"
     }
 }
 
@@ -23,9 +23,12 @@ object Test {
 class NumberViewHolder(val binding: ItemNumberBinding) : RecyclerView.ViewHolder(binding.root) {
 
     @Bind
-    fun bind(item: NumberViewItem) {
+    fun bind(item: NumberViewItemViewHolder) {
         binding.bind(item.number)
     }
 }
 
-class NumberViewItem(val number: Int)
+class NumberViewItemBindingExtension(val number: String)
+
+class NumberViewItemViewHolder(val number: NumberViewItemBindingExtension)
+
