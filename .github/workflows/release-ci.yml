@@ -1,30 +1,15 @@
-name: Snapshots
+name: Release
 
 on:
-  pull_request:
-    branches:
-      - master
-  push:
-    branches:
-      - master
+  release:
+    types: [published]
 
 env:
   JAVA_TOOL_OPTIONS: -Xmx5120m
   TERM: dumb
 
 jobs:
-  update_draft_release:
-    name: Draft Release
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: release-drafter/release-drafter@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build:
-    if: "!contains(github.event.head_commit.message, 'skip ci')"
-
     name: Build and Publish
     runs-on: ubuntu-latest
 
@@ -53,4 +38,4 @@ jobs:
         run: ./gradlew build
 
       - name: Publish to GitHub Packages
-        run: ./gradlew publish -PmavenCentralRepositoryUsername=${{ github.actor }} -PmavenCentralRepositoryPassword=${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew publish -PmavenCentralRepositoryUsername=${{ github.actor }} -PmavenCentralRepositoryPassword=${{ secrets.GITHUB_TOKEN }} -PVERSION_NAME=${GITHUB_REF##*v}
