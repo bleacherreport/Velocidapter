@@ -1,5 +1,5 @@
 ext {
-    libraryVersion = '1.4.2'
+    libraryVersion = '2.0.0'
 
     // Nothing below this line should ever change
     bintrayRepo = 'velocidapter'
