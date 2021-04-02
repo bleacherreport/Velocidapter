@@ -12,19 +12,9 @@ import javax.lang.model.SourceVersion
 import javax.lang.model.element.*
 import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.ExecutableType
-import javax.lang.model.type.PrimitiveType
-import javax.lang.model.type.TypeKind
 import javax.tools.Diagnostic
 
-private const val VELOCIDAPTER_PATH = "com.bleacherreport.velocidapterandroid"
-private const val VIEW_HOLDER_VIEW_BINDING = "VelocidapterViewHolder"
-private const val VIEW_HOLDER_VIEW_BINDING_FULL = "$VELOCIDAPTER_PATH.$VIEW_HOLDER_VIEW_BINDING"
 
-
-private const val VIEW_BIND_INSTRUCTION = """
-A Velocidapter ViewBinding method must have one @ViewHolderBind annotated method which must follow the below steps:
-  1) The method must extend a ViewBinding or pass a ViewBinding as the first argument
-  2) The next argument must be the data model you bind with (Any)"""
 
 @AutoService(Processor::class)
 class VelocidapterProcessor : AbstractProcessor() {
@@ -43,8 +33,6 @@ class VelocidapterProcessor : AbstractProcessor() {
 
     override fun process(set: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
         return try {
-
-
             val bindFunctionList = roundEnv?.getElementsAnnotatedWith(Bind::class.java)?.map { it }
             val unbindFunctionList = roundEnv?.getElementsAnnotatedWith(Unbind::class.java)?.map { it }
             val attachFunctionList = roundEnv?.getElementsAnnotatedWith(OnAttachToWindow::class.java)?.map { it }
@@ -66,7 +54,8 @@ class VelocidapterProcessor : AbstractProcessor() {
                         if (bindFunction != null) {
                             throw VelocidapterException("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $VIEW_BIND_INSTRUCTION")
                         }
-                        bindFunction = createBindFunction(bindElement, viewHolderElement.simpleName.toString())
+                        bindFunction = PositionBindFunction.from(bindElement,
+                            viewHolderElement.simpleName.toString())
                     }
 
                     unbindFunctionList?.find { it == enclosedElement }?.let { bindElement ->
@@ -108,18 +97,11 @@ class VelocidapterProcessor : AbstractProcessor() {
                     getFunctions(viewHolderElement) { bindFunction, unbindFunction, attachFunction, detachFunction ->
                         val annotation = viewHolderElement.getAnnotation(ViewHolder::class.java)!!
                         val name = getFullPath(viewHolderElement)
-
-
                         // fetch first viewBinding from constructor
                         val binding = viewHolderElement.enclosedElements
-                            // get constructors
-                            .mapNotNull {
-                                when (it.kind == ElementKind.CONSTRUCTOR) {
-                                    true -> it as ExecutableElement
-                                    false -> null
-                                }
-                            }
                             .mapNotNull { element ->
+                                if (element.kind != ElementKind.CONSTRUCTOR) return@mapNotNull null
+                                if (element !is ExecutableElement) return@mapNotNull null
                                 // must have one param
                                 if (element.parameters.size != 1) return@mapNotNull null
                                 val executableType = (element.asType() as ExecutableType)
@@ -133,11 +115,12 @@ class VelocidapterProcessor : AbstractProcessor() {
                                 val viewBindingParamName = viewBindingTypeElement.qualifiedName?.toString()
                                     ?: return@mapNotNull null
                                 viewBindingTypeElement
-                            }?.firstOrNull()
-                            ?: throw VelocidapterException("@ViewHolder for class ${viewHolderElement} must have a constructor with a single param that is of type ViewBinding $VIEW_BIND_INSTRUCTION")
+                            }
+                            .firstOrNull()
+                            ?: throw VelocidapterException("@ViewHolder for class ${viewHolderElement} must have a constructor with a single param that is of type ViewBinding")
 
 
-                        val viewHolder = BindableLayoutViewHolder(getFullPath(viewHolderElement),
+                        val viewHolder = BindMethodViewHolderBuilder(getFullPath(viewHolderElement),
                             bindFunction!!, unbindFunction, attachFunction, detachFunction) {
                             addStatement(
                                 "val binding = %T.inflate(%T.from(viewGroup.context), viewGroup, false)",
@@ -163,10 +146,10 @@ class VelocidapterProcessor : AbstractProcessor() {
                 }
                 ?.forEach { viewHolderBindingElement ->
 
-                    val bindFunction = createViewBindingFunction(viewHolderBindingElement)
+                    val bindFunction = ViewBindFunction.from(viewHolderBindingElement)
                     val annotation = viewHolderBindingElement.getAnnotation(ViewHolder::class.java)!!
 
-                    val viewHolder = ViewBindableViewHolder(
+                    val viewHolder = ClassViewHolderBuilder(
                         VIEW_HOLDER_VIEW_BINDING_FULL,
                         ClassName.bestGuess(bindFunction.bindingType),
                         bindFunction,
@@ -204,67 +187,6 @@ class VelocidapterProcessor : AbstractProcessor() {
             false
         }
     }
-
-    private fun createViewBindingFunction(element: Element): ViewBindFunction {
-        val executableType = (element.asType() as ExecutableType)
-        val parameters = executableType.parameterTypes
-
-
-        val viewBindingParam = parameters.getOrNull(0) as? DeclaredType
-        val viewBindingTypeElement = (viewBindingParam?.asElement() as? TypeElement)
-        if (viewBindingTypeElement?.interfaces?.firstOrNull()?.toString() != "androidx.viewbinding.ViewBinding")
-            throw VelocidapterException("@ViewHolderBind method ${element.methodFullName()} should be an extension method for a ViewBinding. $VIEW_BIND_INSTRUCTION")
-        val viewBindingParamName = viewBindingTypeElement.qualifiedName?.toString()
-            ?: throw VelocidapterException("@ViewHolderBind method ${element.methodFullName()} should be an extension method for a ViewBinding. $VIEW_BIND_INSTRUCTION")
-
-        val dataParamName = parameters.getOrNull(1)?.let {
-            if (it is DeclaredType) {
-                var name = (it.asElement() as TypeElement).qualifiedName.toString()
-                if (name == "java.lang.String") name = "kotlin.String"
-                name
-            } else {
-                resolvePrimitiveType((it as PrimitiveType).toString())
-            }
-        }
-            ?: throw VelocidapterException("@ViewHolderBind method ${element.methodFullName()} second param should be a data param. $VIEW_BIND_INSTRUCTION")
-
-
-        if (parameters.size > 2) {
-            throw VelocidapterException("@ViewHolderBind method ${element.methodFullName()} has too many params. $VIEW_BIND_INSTRUCTION")
-        }
-
-        return ViewBindFunction(
-            element = element,
-            bindingType = viewBindingParamName,
-            argumentType = dataParamName
-        )
-    }
-
-
-    private fun createBindFunction(element: Element, viewHolderName: String): PositionBindFunction {
-        val parameters = (element.asType() as ExecutableType).parameterTypes
-        if (parameters.size != 2 && parameters.size != 1) {
-            throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName} does not have the right number of parameters. $VIEW_BIND_INSTRUCTION")
-        }
-
-        val dataParam = parameters[0]
-        if (parameters.size > 1) {
-            if (parameters[1] !is PrimitiveType || parameters[1].kind != TypeKind.INT) {
-                throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName} second parameter is not an Int. $VIEW_BIND_INSTRUCTION")
-            }
-        }
-
-        val dataArgumentType = if (dataParam is DeclaredType) {
-            var name = (dataParam.asElement() as TypeElement).qualifiedName.toString()
-            if (name == "java.lang.String") name = "kotlin.String"
-            name
-        } else {
-            resolvePrimitiveType((dataParam as PrimitiveType).toString())
-        }
-
-        return PositionBindFunction(element, dataArgumentType, parameters.size > 1)
-    }
-
 
     private fun getDataList(adapter: BindableAdapter): TypeSpec {
         val typeSpec = TypeSpec.classBuilder(adapter.dataListName)
@@ -331,18 +253,17 @@ class VelocidapterProcessor : AbstractProcessor() {
             )
             .addCode("%L,\n", getCreateViewHolderLambda(adapter.viewHolders))
             .addCode("%L,\n", getBindViewHolderLamda(adapter.viewHolders))
-            .addCode("%L,\n", getFunctionNames(adapter.viewHolders) { unbindFunction })
+            .addCode("%L,\n", FunctionName.from(adapter.viewHolders) { unbindFunction })
             .addCode("%L,\n", getItemTypeLambda(adapter.viewHolders))
-            .addCode("%L,\n", getFunctionNames(adapter.viewHolders) { attachFunction })
-            .addCode("%L\n", getFunctionNames(adapter.viewHolders) { detachFunction })
+            .addCode("%L,\n", FunctionName.from(adapter.viewHolders) { attachFunction })
+            .addCode("%L\n", FunctionName.from(adapter.viewHolders) { detachFunction })
             .addStatement("⇤)")
             .addStatement("this.adapter = adapter")
             .addStatement("return adapter")
         return funSpec.build()
     }
 
-
-    private fun getCreateViewHolderLambda(viewHolders: Set<BaseViewHolder>): CodeBlock {
+    private fun getCreateViewHolderLambda(viewHolders: Set<BaseViewHolderBuilder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ viewGroup, type ->")
             viewHolders.forEachIndexed { index, viewHolder ->
@@ -355,7 +276,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         }
     }
 
-    private fun getItemTypeLambda(viewHolders: Set<BaseViewHolder>): CodeBlock {
+    private fun getItemTypeLambda(viewHolders: Set<BaseViewHolderBuilder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ position, dataset ->")
             addStatement("val dataItem = dataset[position]")
@@ -372,30 +293,19 @@ class VelocidapterProcessor : AbstractProcessor() {
         }
     }
 
-    private fun getBindViewHolderLamda(viewHolders: Set<BaseViewHolder>): CodeBlock {
+    private fun getBindViewHolderLamda(viewHolders: Set<BaseViewHolderBuilder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ viewHolder, position, dataset ->")
 
             //ViewHolder
-            viewHolders.filterIsInstance<BindableLayoutViewHolder>().forEachIndexed { index, viewHolder ->
-                val viewHolderClassName = ClassName.bestGuess(viewHolder.name)
-                val bindStatementFormat = if (viewHolder.bindFunction.hasPositionParameter) {
-                    "(viewHolder as %T).%N(dataset[position] as %T, position)"
-                } else {
-                    "(viewHolder as %T).%N(dataset[position] as %T)"
+            viewHolders.filterIsInstance<BindMethodViewHolderBuilder>().forEachIndexed { index, viewHolder ->
+                viewHolder.bindFunction.apply {
+                    createBindFunction(viewHolderClassName = viewHolder.name)
                 }
-                beginControlFlow("if (viewHolder::class == %T::class)", viewHolderClassName)
-                addStatement(
-                    bindStatementFormat,
-                    viewHolderClassName,
-                    viewHolder.bindFunction.functionName,
-                    ClassName.bestGuess(viewHolder.bindFunction.argumentType)
-                )
-                endControlFlow()
             }
 
             //ViewBinding
-            viewHolders.filterIsInstance<ViewBindableViewHolder>().takeIf { it.isNotEmpty() }?.also { viewHolders ->
+            viewHolders.filterIsInstance<ClassViewHolderBuilder>().takeIf { it.isNotEmpty() }?.also { viewHolders ->
                 val viewHolderClassName = ClassName.bestGuess(VIEW_HOLDER_VIEW_BINDING_FULL)
                 beginControlFlow("if (viewHolder::class == %T::class)", viewHolderClassName)
                 addStatement(
@@ -403,98 +313,14 @@ class VelocidapterProcessor : AbstractProcessor() {
                     viewHolderClassName,
                 )
                 viewHolders.forEachIndexed { index, viewHolder ->
-                    beginControlFlowElseIf(
-                        index,
-                        "if (typedViewHolder.dataType == %T::class)",
-                        ClassName.bestGuess(viewHolder.bindFunction.argumentType)
-                    )
-
-                    addStatement(
-                        "typedViewHolder.bind(dataset[position] as %T, position)",
-                        ClassName.bestGuess(viewHolder.bindFunction.argumentType),
-                    )
-
-                    endControlFlow()
-                }
-                endControlFlow()
-            }
-
-            endControlFlow()
-        }
-    }
-
-    fun CodeBlock.Builder.beginControlFlowElseIf(index: Int, controlFlow: String, vararg args: Any?) =
-        beginControlFlow((if (index == 0) "" else " else ") + controlFlow, *args)
-
-    private fun getFunctionNames(
-        viewHolders: Set<BaseViewHolder>,
-        fetch: BaseViewHolder.() -> FunctionName?,
-    ): CodeBlock {
-        return buildCodeBlock {
-            beginControlFlow("{ viewHolder ->")
-            viewHolders.filterIsInstance<BindableLayoutViewHolder>().forEach { viewHolder ->
-                val functionName = viewHolder.fetch() ?: return@forEach
-                beginControlFlow(
-                    "if (viewHolder::class == %T::class)",
-                    ClassName.bestGuess(viewHolder.name)
-                )
-                addStatement("(viewHolder as %T).%N()",
-                    ClassName.bestGuess(viewHolder.name),
-                    functionName.functionName)
-                endControlFlow()
-            }
-            viewHolders.filterIsInstance<ViewBindableViewHolder>().filter { it.fetch() != null }
-                .takeIf { it.isNotEmpty() }?.also { viewHolders ->
-                    beginControlFlow(
-                        "if (viewHolder::class == %T::class)",
-                        ClassName.bestGuess(VIEW_HOLDER_VIEW_BINDING_FULL)
-                    )
-                    addStatement("val typedViewHolder = viewHolder as %T",
-                        ClassName.bestGuess(VIEW_HOLDER_VIEW_BINDING_FULL)
-                    )
-                    viewHolders.forEachIndexed { index, viewHolder ->
-                        beginControlFlowElseIf(
-                            index,
-                            "if (typedViewHolder.dataType == %T::class)",
-                            ClassName.bestGuess(viewHolder.bindFunction.argumentType),
-                        )
-                        viewHolder.fetch()?.also {
-                            addStatement("typedViewHolder.${it.functionName}()",
-                                ClassName.bestGuess(viewHolder.name))
-                        }
-                        endControlFlow()
+                    viewHolder.bindFunction.apply {
+                        createBindFunction(viewHolderClassName = viewHolder.name)
                     }
-                    endControlFlow()
                 }
-            endControlFlow()
-        }
-    }
-
-    private fun getFullPath(element: Element): String {
-        return if (element is TypeElement) {
-            var enclosing = element
-            while (enclosing.kind != ElementKind.PACKAGE) {
-                enclosing = enclosing.enclosingElement
+                endControlFlow()
             }
-            val packageElement = enclosing as PackageElement
-            var path = packageElement.qualifiedName.toString() + "." + element.simpleName.toString()
-            if (path == "java.lang.String") path = "kotlin.String"
-            path
-        } else {
-            resolvePrimitiveType((element as PrimitiveType).toString())
-        }
-    }
 
-    private fun resolvePrimitiveType(typeName: String): String {
-        return when (typeName) {
-            "boolean" -> "kotlin.Boolean"
-            "int" -> "kotlin.Int"
-            "long" -> "kotlin.Long"
-            "float" -> "kotlin.Float"
-            "double" -> "kotlin.Double"
-            "short" -> "kotlin.Short"
-            "byte" -> "kotlin.Byte"
-            else -> typeName
+            endControlFlow()
         }
     }
 
@@ -505,104 +331,13 @@ class VelocidapterProcessor : AbstractProcessor() {
 
 class VelocidapterException(override val message: String?) : java.lang.Exception(message)
 
-interface BaseBindFunction {
-    val element: Element
-    val argumentType: String
-    val functionName: String
-        get() = element.simpleName.toString().split("(")[0]
-    val functionFullName: String
-        get() = element.simpleName.toString().split("(")[0]
 
-}
-
-class ViewBindFunction(
-    override val element: Element,
-    val bindingType: String,
-    override val argumentType: String,
-) : BaseBindFunction
-
-class PositionBindFunction(
-    override val element: Element,
-    override val argumentType: String,
-    val hasPositionParameter: Boolean,
-) :
-    BaseBindFunction
-
-class FunctionName(
-    val functionName: String,
-) {
-    companion object {
-        fun from(element: Element) = FunctionName(element.simpleName.toString().split("(")[0])
-    }
-}
-
-data class BindableAdapter(val name: String, val viewHolders: MutableSet<BaseViewHolder> = LinkedHashSet()) {
+data class BindableAdapter(val name: String, val viewHolders: MutableSet<BaseViewHolderBuilder> = LinkedHashSet()) {
     val dataListName
         get() = name + "DataList"
     val dataTargetName
         get() = name + "DataTarget"
 }
 
-interface BaseViewHolder {
-    val name: String
-    val bindFunction: BaseBindFunction
-    val unbindFunction: FunctionName?
-    val attachFunction: FunctionName?
-    val detachFunction: FunctionName?
-    val createViewHolder: CodeBlock.Builder.() -> Unit
-}
 
-data class BindableLayoutViewHolder(
-    override val name: String,
-    override val bindFunction: PositionBindFunction,
-    override val unbindFunction: FunctionName?,
-    override val attachFunction: FunctionName?,
-    override val detachFunction: FunctionName?,
-    override val createViewHolder: CodeBlock.Builder.() -> Unit,
-) : BaseViewHolder
-
-data class ViewBindableViewHolder(
-    override val name: String,
-    val binding: ClassName,
-    override val bindFunction: ViewBindFunction,
-    override val unbindFunction: FunctionName?,
-    override val attachFunction: FunctionName?,
-    override val detachFunction: FunctionName?,
-) : BaseViewHolder {
-    override val createViewHolder: CodeBlock.Builder.() -> Unit = {
-        addStatement(
-            "val inflater = %T.from(viewGroup.context)",
-            ClassName("android.view", "LayoutInflater")
-        )
-        addStatement(
-            "val binding = %T.inflate(inflater, viewGroup, false)",
-            binding
-        )
-        addStatement(
-            "return@FunctionalAdapter·%T(binding, ${bindFunction.argumentType}::class) {data, viewHolder, position -> ",
-            ClassName.bestGuess(name)
-        )
-        val annotation = bindFunction.element.getAnnotation(ViewHolder::class.java)!!
-
-        var startingStatement = "    %M(binding, "
-        var enclosingName = bindFunction.element.enclosingElement.toString()
-        if (!annotation.isClassMethod) {
-            startingStatement = "    binding.%M("
-            enclosingName = enclosingName.split(".").let {
-                it.takeIf { it.lastOrNull()?.endsWith("Kt") == true }?.dropLast(1) ?: it
-            }.joinToString(".")
-        }
-
-        addStatement(
-            "${startingStatement}data as %T)",
-            MemberName(enclosingName, bindFunction.functionName),
-            ClassName.bestGuess(bindFunction.argumentType)
-        )
-
-        addStatement("}")
-    }
-}
-
-
-fun Element.methodFullName() = "$enclosingElement.$simpleName"
 

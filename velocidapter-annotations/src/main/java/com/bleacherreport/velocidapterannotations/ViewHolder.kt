@@ -8,13 +8,12 @@ package com.bleacherreport.velocidapterannotations
  * two different Adapter extension functions
  * @param isClassMethod defaults false.  Mark as true if this annotation is on a method in a class
  * For Example,
- *
- * //        object Test {
-@ViewBinding(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], isClassMethod = true)
-fun bind(itemNumberBinding: ItemNumberBinding, number: Int) {
-itemNumberBinding.textView.text = number.toString() + " bind method"
-}
-}
  */
+//        object Test {
+//           @ViewBinding(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], isClassMethod = true)
+//           fun bind(itemNumberBinding: ItemNumberBinding, number: Int) {
+//               itemNumberBinding.textView.text = number.toString() + " bind method"
+//           }
+//           }
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
 annotation class ViewHolder(vararg val adapters: String, val isClassMethod: Boolean = false)
