@@ -1,0 +1,66 @@
+name: Snapshots
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+env:
+  JAVA_TOOL_OPTIONS: -Xmx5120m
+  TERM: dumb
+  releaseStorePassword: ${{ secrets.RELEASESTOREPASSWORD }}
+  releaseKeyPassword: ${{secrets.KEY_PASSWORD}}
+  releaseKeyAlias: ${{secrets.KEY_ALIAS}}
+  FIREBASE_TOKEN: ${{secrets.FIREBASE_TOKEN}}
+
+jobs:
+  update_draft_release:
+    name: Draft Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: release-drafter/release-drafter@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+
+    name: Build Debug
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v2
+
+      - name: Copy CI gradle.properties
+        run: mkdir -p ~/.gradle ; cp .github/ci-gradle.properties ~/.gradle/gradle.properties
+
+      - name: set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+
+      - name: Save/Restore Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.gradle/caches/modules-*
+            ~/.gradle/caches/jars-*
+            ~/.gradle/caches/build-cache-*
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Upload Annotations
+        run: ./gradlew build
+
+    # The USERNAME and TOKEN need to correspond to the credentials environment variables used in
+    # the publishing section of your build.gradle
+    - name: Publish to GitHub Packages
+      run: ./gradlew publish
+      env:
+        USERNAME: ${{ github.actor }}
+        TOKEN: ${{ secrets.GITHUB_TOKEN }}
