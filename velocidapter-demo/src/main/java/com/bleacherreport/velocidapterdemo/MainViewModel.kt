@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.bleacherreport.velocidapter.MultiAdapterDataList
 import com.bleacherreport.velocidapterdemo.single.NumberViewItemBindingExtension
+import com.bleacherreport.velocidapterdemo.single.NumberViewItemBindingMemberFunction
 import com.bleacherreport.velocidapterdemo.single.NumberViewItemViewHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -18,8 +19,8 @@ class MainViewModel {
     fun updateData() {
         val dataList = MultiAdapterDataList()
         for (i in 0 until 100) {
-            dataList.add(i)
-            dataList.add(NumberViewItemBindingExtension("$i binding extension"))
+            dataList.add(NumberViewItemBindingMemberFunction("$i member fun"))
+            dataList.add(NumberViewItemBindingExtension("$i top level fun"))
             dataList.add(NumberViewItemViewHolder(NumberViewItemBindingExtension("$i view holder binding")))
             dataList.add("$i string")
         }

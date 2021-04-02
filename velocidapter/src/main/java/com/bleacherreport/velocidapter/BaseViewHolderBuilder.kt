@@ -16,7 +16,7 @@ interface BaseViewHolderBuilder {
 
 data class BindMethodViewHolderBuilder(
     override val name: String,
-    override val bindFunction: PositionBindFunction,
+    override val bindFunction: ViewHolderBindFunction,
     override val unbindFunction: FunctionName?,
     override val attachFunction: FunctionName?,
     override val detachFunction: FunctionName?,
@@ -26,7 +26,7 @@ data class BindMethodViewHolderBuilder(
 data class ClassViewHolderBuilder(
     override val name: String,
     val binding: ClassName,
-    override val bindFunction: ViewBindFunction,
+    override val bindFunction: ViewBindingFunction,
     override val unbindFunction: FunctionName?,
     override val attachFunction: FunctionName?,
     override val detachFunction: FunctionName?,

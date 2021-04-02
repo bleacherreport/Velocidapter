@@ -9,6 +9,8 @@ import com.bleacherreport.velocidapterandroid.withLinearLayoutManager
 import com.bleacherreport.velocidapterdemo.diff.DiffPoko
 import com.bleacherreport.velocidapterdemo.parentchild.ChildPoko
 import com.bleacherreport.velocidapterdemo.parentchild.ParentPoko
+import com.bleacherreport.velocidapterdemo.single.NumberViewItemBindingExtension
+import com.bleacherreport.velocidapterdemo.single.NumberViewItemBindingMemberFunction
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 
@@ -38,8 +40,10 @@ class MainActivity : AppCompatActivity() {
         description.setText(R.string.description_single)
         val target = recyclerView.withLinearLayoutManager().attachSingleAdapter()
         val dataList = SingleAdapterDataList()
-        for (i in 0 until 100) dataList.add(i)
-        dataList.addListOfInt(listOf(101, 102, 103))
+        for (i in 0 until 100) dataList.add(NumberViewItemBindingMemberFunction(i.toString()))
+        dataList.addListOfNumberViewItemBindingExtension(listOf(101,
+            102,
+            103).map { NumberViewItemBindingExtension(it.toString()) })
         target.updateDataset(dataList)
         return true
     }

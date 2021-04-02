@@ -42,9 +42,9 @@ class VelocidapterProcessor : AbstractProcessor() {
             fun getFunctions(
                 viewHolderElement: Element,
                 viewBinding: String,
-                callback: (bindFunction: PositionBindFunction?, unbindFunction: FunctionName?, attachFunction: FunctionName?, detachFunction: FunctionName?) -> Unit,
+                callback: (bindFunction: ViewHolderBindFunction?, unbindFunction: FunctionName?, attachFunction: FunctionName?, detachFunction: FunctionName?) -> Unit,
             ) {
-                var bindFunction: PositionBindFunction? = null
+                var bindFunction: ViewHolderBindFunction? = null
                 var unbindFunction: FunctionName? = null
                 var attachFunction: FunctionName? = null
                 var detachFunction: FunctionName? = null
@@ -52,9 +52,9 @@ class VelocidapterProcessor : AbstractProcessor() {
                 viewHolderElement.enclosedElements.forEach { enclosedElement ->
                     bindFunctionList?.find { it == enclosedElement }?.let { bindElement ->
                         if (bindFunction != null) {
-                            throw VelocidapterException("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $VIEW_BIND_INSTRUCTION")
+                            throw VelocidapterException("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $VIEW_HOLDER_BIND_INSTRUCTION")
                         }
-                        bindFunction = PositionBindFunction.from(
+                        bindFunction = ViewHolderBindFunction.from(
                             bindElement,
                             viewHolderName = viewHolderElement.simpleName.toString(),
                             bindingType = viewBinding
@@ -84,7 +84,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                 }
 
                 if (bindFunction == null) {
-                    throw VelocidapterException("${viewHolderElement.simpleName} is missing an @Bind method. $VIEW_BIND_INSTRUCTION")
+                    throw VelocidapterException("${viewHolderElement.simpleName} is missing an @Bind method. $VIEW_HOLDER_BIND_INSTRUCTION")
                 }
 
                 callback(bindFunction, unbindFunction, attachFunction, detachFunction)
@@ -152,7 +152,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                 ?.forEach { viewHolderBindingElement ->
 
 
-                    val bindFunction = ViewBindFunction.from(viewHolderBindingElement)
+                    val bindFunction = ViewBindingFunction.from(viewHolderBindingElement)
                     val annotation = viewHolderBindingElement.getAnnotation(ViewHolder::class.java)!!
 
                     val viewHolder = ClassViewHolderBuilder(
