@@ -1,21 +1,22 @@
-apply from: 'bintray/properties.gradle'
 
 buildscript {
-    ext.kotlin_version = '1.3.21'
+    ext.kotlin_version = '1.4.32'
     repositories {
+        mavenCentral()
         google()
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.2.1'
+        classpath 'com.android.tools.build:gradle:4.1.3'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.4.1'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.14.2'
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:1.4.30"
     }
 }
 
 allprojects {
     repositories {
+        mavenCentral()
         google()
         jcenter()
     }
@@ -28,21 +29,3 @@ task clean(type: Delete) {
         rootProject.clean { dependsOn tasks.matching { it.name == 'clean' } }
     }
 }
-
-// Bintray upload steps
-def annotationsInstall = 'velocidapter-annotations:install'
-def annotationsUpload = 'velocidapter-annotations:bintrayUpload'
-def mainInstall = 'velocidapter:install'
-def mainUpload = 'velocidapter:bintrayUpload'
-def androidInstall = 'velocidapter-android:install'
-def androidUpload = 'velocidapter-android:bintrayUpload'
-
-task uploadAnnotations(dependsOn: [clean, annotationsInstall, annotationsUpload])
-task(annotationsInstall).mustRunAfter(clean)
-task(annotationsUpload).mustRunAfter(annotationsInstall)
-
-task uploadMain(dependsOn: [clean, mainInstall, mainUpload, androidInstall, androidUpload])
-task(mainInstall).mustRunAfter(clean)
-task(mainUpload).mustRunAfter(mainInstall)
-task(androidInstall).mustRunAfter(mainUpload)
-task(androidUpload).mustRunAfter(androidInstall)
