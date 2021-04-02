@@ -8,11 +8,11 @@ import com.bleacherreport.velocidapterdemo.MainActivity
 import com.bleacherreport.velocidapterdemo.databinding.ItemStringBinding
 
 @ViewHolder(adapters = [MainActivity.MultiAdapter])
-class StringViewHolder(val binding: ItemStringBinding) : RecyclerView.ViewHolder(binding.root) {
+class StringViewHolder(binding: ItemStringBinding) : RecyclerView.ViewHolder(binding.root) {
 
     @SuppressLint("SetTextI18n")
     @Bind
-    fun nameOtherThanBindModel(string: String, position: Int) {
-        binding.textView.text = "$string @ position $position"
+    fun ItemStringBinding.nameOtherThanBindModel(string: String, position: Int) {
+        textView.text = "$string @ position $position"
     }
 }

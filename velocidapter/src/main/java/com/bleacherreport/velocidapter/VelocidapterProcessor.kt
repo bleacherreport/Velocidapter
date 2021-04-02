@@ -42,6 +42,7 @@ class VelocidapterProcessor : AbstractProcessor() {
 
             fun getFunctions(
                 viewHolderElement: Element,
+                viewBinding: String,
                 callback: (bindFunction: PositionBindFunction?, unbindFunction: FunctionName?, attachFunction: FunctionName?, detachFunction: FunctionName?) -> Unit,
             ) {
                 var bindFunction: PositionBindFunction? = null
@@ -54,8 +55,11 @@ class VelocidapterProcessor : AbstractProcessor() {
                         if (bindFunction != null) {
                             throw VelocidapterException("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $VIEW_BIND_INSTRUCTION")
                         }
-                        bindFunction = PositionBindFunction.from(bindElement,
-                            viewHolderElement.simpleName.toString())
+                        bindFunction = PositionBindFunction.from(
+                            bindElement,
+                            viewHolderName = viewHolderElement.simpleName.toString(),
+                            bindingType = viewBinding
+                        )
                     }
 
                     unbindFunctionList?.find { it == enclosedElement }?.let { bindElement ->
@@ -94,30 +98,33 @@ class VelocidapterProcessor : AbstractProcessor() {
                     (it.kind == ElementKind.CLASS)
                 }
                 ?.forEach { viewHolderElement ->
-                    getFunctions(viewHolderElement) { bindFunction, unbindFunction, attachFunction, detachFunction ->
-                        val annotation = viewHolderElement.getAnnotation(ViewHolder::class.java)!!
-                        val name = getFullPath(viewHolderElement)
-                        // fetch first viewBinding from constructor
-                        val binding = viewHolderElement.enclosedElements
-                            .mapNotNull { element ->
-                                if (element.kind != ElementKind.CONSTRUCTOR) return@mapNotNull null
-                                if (element !is ExecutableElement) return@mapNotNull null
-                                // must have one param
-                                if (element.parameters.size != 1) return@mapNotNull null
-                                val executableType = (element.asType() as ExecutableType)
-                                val parameters = executableType.parameterTypes
-                                val viewBindingParam = parameters.getOrNull(0) as? DeclaredType
-                                val viewBindingTypeElement = (viewBindingParam?.asElement() as? TypeElement)
-                                // param must be a view binding
-                                if (viewBindingTypeElement?.interfaces?.firstOrNull()
-                                        ?.toString() != "androidx.viewbinding.ViewBinding"
-                                ) return@mapNotNull null
-                                val viewBindingParamName = viewBindingTypeElement.qualifiedName?.toString()
-                                    ?: return@mapNotNull null
-                                viewBindingTypeElement
-                            }
-                            .firstOrNull()
-                            ?: throw VelocidapterException("@ViewHolder for class ${viewHolderElement} must have a constructor with a single param that is of type ViewBinding")
+
+                    val annotation = viewHolderElement.getAnnotation(ViewHolder::class.java)!!
+                    val name = getFullPath(viewHolderElement)
+                    // fetch first viewBinding from constructor
+                    val binding = viewHolderElement.enclosedElements
+                        .mapNotNull { element ->
+                            if (element.kind != ElementKind.CONSTRUCTOR) return@mapNotNull null
+                            if (element !is ExecutableElement) return@mapNotNull null
+                            // must have one param
+                            if (element.parameters.size != 1) return@mapNotNull null
+                            val executableType = (element.asType() as ExecutableType)
+                            val parameters = executableType.parameterTypes
+                            val viewBindingParam = parameters.getOrNull(0) as? DeclaredType
+                            val viewBindingTypeElement = (viewBindingParam?.asElement() as? TypeElement)
+                            // param must be a view binding
+                            if (viewBindingTypeElement?.interfaces?.firstOrNull()
+                                    ?.toString() != "androidx.viewbinding.ViewBinding"
+                            ) return@mapNotNull null
+                            val viewBindingParamName = viewBindingTypeElement.qualifiedName?.toString()
+                                ?: return@mapNotNull null
+                            viewBindingTypeElement
+                        }
+                        .firstOrNull()
+                        ?: throw VelocidapterException("@ViewHolder for class ${viewHolderElement} must have a constructor with a single param that is of type ViewBinding")
+
+                    getFunctions(viewHolderElement,
+                        binding.qualifiedName?.toString()!!) { bindFunction, unbindFunction, attachFunction, detachFunction ->
 
 
                         val viewHolder = BindMethodViewHolderBuilder(getFullPath(viewHolderElement),
@@ -253,10 +260,10 @@ class VelocidapterProcessor : AbstractProcessor() {
             )
             .addCode("%L,\n", getCreateViewHolderLambda(adapter.viewHolders))
             .addCode("%L,\n", getBindViewHolderLamda(adapter.viewHolders))
-            .addCode("%L,\n", FunctionName.from(adapter.viewHolders) { unbindFunction })
+            .addCode("%L,\n", FunctionName.createFunctionFrom(adapter.viewHolders) { unbindFunction })
             .addCode("%L,\n", getItemTypeLambda(adapter.viewHolders))
-            .addCode("%L,\n", FunctionName.from(adapter.viewHolders) { attachFunction })
-            .addCode("%L\n", FunctionName.from(adapter.viewHolders) { detachFunction })
+            .addCode("%L,\n", FunctionName.createFunctionFrom(adapter.viewHolders) { attachFunction })
+            .addCode("%L\n", FunctionName.createFunctionFrom(adapter.viewHolders) { detachFunction })
             .addStatement("⇤)")
             .addStatement("this.adapter = adapter")
             .addStatement("return adapter")

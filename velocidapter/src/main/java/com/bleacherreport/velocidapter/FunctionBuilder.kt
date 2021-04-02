@@ -72,31 +72,44 @@ class PositionBindFunction(
 ) :
     BaseBindFunction {
 
-    val hasViewBindingParamter: Boolean = viewBindingType != null
-
     override fun CodeBlock.Builder.createBindFunction(viewHolderClassName: String) {
-        val bindStatementFormat = if (hasPositionParameter) {
-            "(viewHolder as %T).%N(dataset[position] as %T, position)"
-        } else {
-            "(viewHolder as %T).%N(dataset[position] as %T)"
-        }
         beginControlFlow("if (viewHolder::class == %T::class)", ClassName.bestGuess(viewHolderClassName))
         addStatement(
-            bindStatementFormat,
+            "(viewHolder as %T).apply {",
             ClassName.bestGuess(viewHolderClassName),
+        )
+
+        if (viewBindingType != null) {
+            addStatement(
+                "  %T.bind(itemView).",
+                ClassName.bestGuess(viewBindingType)
+            )
+        }
+
+        addStatement(
+            if (hasPositionParameter) {
+                "   %N(dataset[position] as %T, position)"
+            } else {
+                "   %N(dataset[position] as %T)"
+            },
             functionName,
             ClassName.bestGuess(argumentType)
+        )
+        addStatement(
+            "}",
         )
         endControlFlow()
     }
 
     companion object {
-        fun from(element: Element, viewHolderName: String): PositionBindFunction {
+        fun from(element: Element, viewHolderName: String, bindingType: String): PositionBindFunction {
             val executableType = (element.asType() as ExecutableType)
 
             var startingPosition = 0
             val viewBindingParamName = executableType.viewBindingParamNameAtPosition(startingPosition)
             if (viewBindingParamName != null) {
+                if (viewBindingParamName != bindingType)
+                    throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName} viewBinding type was $viewBindingParamName but should be $bindingType. $VIEW_BIND_INSTRUCTION")
                 startingPosition++
             }
 
@@ -129,7 +142,7 @@ class FunctionName(
     companion object {
         fun from(element: Element) = FunctionName(element.simpleName.toString().split("(")[0])
 
-        fun from(
+        fun createFunctionFrom(
             viewHolders: Set<BaseViewHolderBuilder>,
             fetch: BaseViewHolderBuilder.() -> FunctionName?,
         ): CodeBlock {
