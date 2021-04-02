@@ -12,9 +12,9 @@ fun ItemNumberBinding.bind(number: NumberViewItemBindingExtension) {
 }
 
 object Test {
-    @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], isClassMethod = true)
-    fun bind(itemNumberBinding: ItemNumberBinding, number: Int) {
-        itemNumberBinding.textView.text = number.toString() + " bind method"
+    @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], isMemberFunction = true)
+    fun ItemNumberBinding.bindTest(number: Int) {
+        textView.text = number.toString() + " bind method"
     }
 }
 
@@ -28,6 +28,5 @@ class NumberViewHolder(val binding: ItemNumberBinding) : RecyclerView.ViewHolder
 }
 
 class NumberViewItemBindingExtension(val number: String)
-
 class NumberViewItemViewHolder(val number: NumberViewItemBindingExtension)
 

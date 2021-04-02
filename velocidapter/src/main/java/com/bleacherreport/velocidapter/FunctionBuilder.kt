@@ -17,7 +17,7 @@ interface BaseBindFunction {
     fun CodeBlock.Builder.createBindFunction(viewHolderClassName: String)
 }
 
-class ViewBindFunction(
+class ViewBindFunction private constructor(
     override val element: Element,
     val bindingType: String,
     override val argumentType: String,
@@ -64,7 +64,7 @@ class ViewBindFunction(
 }
 
 
-class PositionBindFunction(
+class PositionBindFunction private constructor(
     override val element: Element,
     override val argumentType: String,
     val viewBindingType: String?,

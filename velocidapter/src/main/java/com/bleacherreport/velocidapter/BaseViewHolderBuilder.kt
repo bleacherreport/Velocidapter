@@ -46,20 +46,27 @@ data class ClassViewHolderBuilder(
         )
         val annotation = bindFunction.element.getAnnotation(ViewHolder::class.java)!!
 
-        var startingStatement = "    %M(binding, "
         var enclosingName = bindFunction.element.enclosingElement.toString()
-        if (!annotation.isClassMethod) {
-            startingStatement = "    binding.%M("
+        if (!annotation.isMemberFunction) {
             enclosingName = enclosingName.split(".").let {
                 it.takeIf { it.lastOrNull()?.endsWith("Kt") == true }?.dropLast(1) ?: it
             }.joinToString(".")
+            addStatement(
+                "    binding.%M(data as %T)",
+                MemberName(enclosingName, bindFunction.functionName),
+                ClassName.bestGuess(bindFunction.argumentType)
+            )
+        } else {
+            addStatement(
+                "%T.apply {\r\n" +
+                        "    binding.${bindFunction.functionName}(data as %T)\r\n" +
+                        "}",
+                ClassName.bestGuess(enclosingName),
+                ClassName.bestGuess(bindFunction.argumentType)
+            )
         }
 
-        addStatement(
-            "${startingStatement}data as %T)",
-            MemberName(enclosingName, bindFunction.functionName),
-            ClassName.bestGuess(bindFunction.argumentType)
-        )
+
 
         addStatement("}")
     }

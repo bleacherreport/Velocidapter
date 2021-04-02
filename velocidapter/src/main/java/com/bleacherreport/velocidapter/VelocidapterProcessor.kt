@@ -15,7 +15,6 @@ import javax.lang.model.type.ExecutableType
 import javax.tools.Diagnostic
 
 
-
 @AutoService(Processor::class)
 class VelocidapterProcessor : AbstractProcessor() {
 
@@ -126,7 +125,6 @@ class VelocidapterProcessor : AbstractProcessor() {
                     getFunctions(viewHolderElement,
                         binding.qualifiedName?.toString()!!) { bindFunction, unbindFunction, attachFunction, detachFunction ->
 
-
                         val viewHolder = BindMethodViewHolderBuilder(getFullPath(viewHolderElement),
                             bindFunction!!, unbindFunction, attachFunction, detachFunction) {
                             addStatement(
@@ -152,6 +150,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                     (it.kind == ElementKind.METHOD)
                 }
                 ?.forEach { viewHolderBindingElement ->
+
 
                     val bindFunction = ViewBindFunction.from(viewHolderBindingElement)
                     val annotation = viewHolderBindingElement.getAnnotation(ViewHolder::class.java)!!
