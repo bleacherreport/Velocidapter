@@ -42,7 +42,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             fun getFunctions(
                 viewHolderElement: Element,
                 viewBinding: String,
-                callback: (bindFunction: ViewHolderBindFunction?, unbindFunction: FunctionName?, attachFunction: FunctionName?, detachFunction: FunctionName?) -> Unit,
+                callback: (bindFunction: ViewHolderBindFunction, unbindFunction: FunctionName?, attachFunction: FunctionName?, detachFunction: FunctionName?) -> Unit,
             ) {
                 var bindFunction: ViewHolderBindFunction? = null
                 var unbindFunction: FunctionName? = null
@@ -83,12 +83,13 @@ class VelocidapterProcessor : AbstractProcessor() {
                     }
                 }
 
-                if (bindFunction == null) {
-                    throw VelocidapterException("${viewHolderElement.simpleName} is missing an @Bind method. $VIEW_HOLDER_BIND_INSTRUCTION")
-                }
-
-                callback(bindFunction, unbindFunction, attachFunction, detachFunction)
-
+                callback(
+                    bindFunction
+                        ?: throw VelocidapterException("${viewHolderElement.simpleName} is missing an @Bind method. $VIEW_HOLDER_BIND_INSTRUCTION"),
+                    unbindFunction,
+                    attachFunction,
+                    detachFunction
+                )
             }
 
             // all ViewHolder Classes
@@ -115,7 +116,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                             if (viewBindingTypeElement?.interfaces?.firstOrNull()
                                     ?.toString() != "androidx.viewbinding.ViewBinding"
                             ) return@mapNotNull null
-                            val viewBindingParamName = viewBindingTypeElement.qualifiedName?.toString()
+                            viewBindingTypeElement.qualifiedName?.toString()
                                 ?: return@mapNotNull null
                             viewBindingTypeElement
                         }
@@ -125,8 +126,13 @@ class VelocidapterProcessor : AbstractProcessor() {
                     getFunctions(viewHolderElement,
                         binding.qualifiedName?.toString()!!) { bindFunction, unbindFunction, attachFunction, detachFunction ->
 
-                        val viewHolder = BindMethodViewHolderBuilder(getFullPath(viewHolderElement),
-                            bindFunction!!, unbindFunction, attachFunction, detachFunction) {
+                        val viewHolder = BindMethodViewHolderBuilder(
+                            viewHolderElement,
+                            getFullPath(viewHolderElement),
+                            bindFunction,
+                            unbindFunction,
+                            attachFunction,
+                            detachFunction) {
                             addStatement(
                                 "val binding = %T.inflate(%T.from(viewGroup.context), viewGroup, false)",
                                 ClassName.bestGuess(binding.asType().toString()),
@@ -144,6 +150,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                     }
                 }
 
+
             // all ViewBinding
             roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)
                 ?.filter {
@@ -151,11 +158,11 @@ class VelocidapterProcessor : AbstractProcessor() {
                 }
                 ?.forEach { viewHolderBindingElement ->
 
-
                     val bindFunction = ViewBindingFunction.from(viewHolderBindingElement)
                     val annotation = viewHolderBindingElement.getAnnotation(ViewHolder::class.java)!!
 
                     val viewHolder = ClassViewHolderBuilder(
+                        viewHolderBindingElement,
                         VIEW_HOLDER_VIEW_BINDING_FULL,
                         ClassName.bestGuess(bindFunction.bindingType),
                         bindFunction,
@@ -304,7 +311,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             beginControlFlow("{ viewHolder, position, dataset ->")
 
             //ViewHolder
-            viewHolders.filterIsInstance<BindMethodViewHolderBuilder>().forEachIndexed { index, viewHolder ->
+            viewHolders.filterIsInstance<BindMethodViewHolderBuilder>().forEach { viewHolder ->
                 viewHolder.bindFunction.apply {
                     createBindFunction(viewHolderClassName = viewHolder.name)
                 }
@@ -318,7 +325,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                     "val typedViewHolder = (viewHolder as %T)",
                     viewHolderClassName,
                 )
-                viewHolders.forEachIndexed { index, viewHolder ->
+                viewHolders.forEach { viewHolder ->
                     viewHolder.bindFunction.apply {
                         createBindFunction(viewHolderClassName = viewHolder.name)
                     }

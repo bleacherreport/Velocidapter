@@ -12,7 +12,7 @@ fun ItemNumberBinding.bind(item: NumberViewItemBindingExtension) {
 }
 
 object Test {
-    @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], isMemberFunction = true)
+    @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter])
     fun ItemNumberBinding.bindTest(item: NumberViewItemBindingMemberFunction) {
         textView.text = item.text
     }

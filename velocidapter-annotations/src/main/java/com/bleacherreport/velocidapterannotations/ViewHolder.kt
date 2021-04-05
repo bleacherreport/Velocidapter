@@ -11,7 +11,7 @@ package com.bleacherreport.velocidapterannotations
  *
  *      //** Object Member Extension Function **//
  *      object Test {
- *        @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], isMemberFunction = true)
+ *        @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter])
  *        fun ItemNumberBinding.bindTest(item: NumberViewItemBindingMemberFunction) {
  *          textView.text = item.text
  *        }
@@ -29,8 +29,7 @@ package com.bleacherreport.velocidapterannotations
  * @param adapters array of adapter names to which this ViewHolder belongs. Note: it is reccomended that
  * these names be made constant as a misspelling between two different ViewHolder annotations will generate
  * two different Adapter extension functions
- * @param isMemberFunction defaults false.
  *
  */
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
-annotation class ViewHolder(vararg val adapters: String, val isMemberFunction: Boolean = false)
+annotation class ViewHolder(vararg val adapters: String)

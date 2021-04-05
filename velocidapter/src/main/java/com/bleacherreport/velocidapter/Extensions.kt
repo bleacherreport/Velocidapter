@@ -62,3 +62,7 @@ fun ExecutableType.paramNameAtPosition(position: Int): String? {
         }
 }
 
+fun Element.isSyntheticClass(): Boolean {
+        return getAnnotation(Metadata::class.java)?.kind == 2
+}
+
