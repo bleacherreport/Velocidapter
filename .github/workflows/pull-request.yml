@@ -1,4 +1,4 @@
-name: Release
+name: Pull Request Builder
 
 on: [pull_request]
 
