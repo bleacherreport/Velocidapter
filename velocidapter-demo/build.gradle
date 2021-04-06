@@ -1,16 +1,11 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 //Needed for Velocidapter
 apply plugin: 'kotlin-kapt'
 
-androidExtensions {
-    experimental = true
-}
-
 android {
-    compileSdkVersion 28
+    compileSdkVersion 30
 
     buildFeatures {
         viewBinding true
@@ -19,12 +14,17 @@ android {
     defaultConfig {
         applicationId "com.bleacherreport.velocidapterdemo"
         minSdkVersion 21
-        targetSdkVersion 28
+        targetSdkVersion 30
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
+    }
+
+    compileOptions {
+        sourceCompatibility 1.8
+        targetCompatibility 1.8
     }
 
     buildTypes {

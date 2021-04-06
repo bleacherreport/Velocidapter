@@ -6,24 +6,27 @@ import com.bleacherreport.velocidapter.*
 import com.bleacherreport.velocidapterandroid.enableDiff
 import com.bleacherreport.velocidapterandroid.observeLiveData
 import com.bleacherreport.velocidapterandroid.withLinearLayoutManager
+import com.bleacherreport.velocidapterdemo.databinding.ActivityMainBinding
 import com.bleacherreport.velocidapterdemo.diff.DiffPoko
 import com.bleacherreport.velocidapterdemo.parentchild.ChildPoko
 import com.bleacherreport.velocidapterdemo.parentchild.ParentPoko
 import com.bleacherreport.velocidapterdemo.single.NumberViewItemBindingExtension
 import com.bleacherreport.velocidapterdemo.single.NumberViewItemBindingMemberFunction
-import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
 
     private val viewModel = MainViewModel()
     private var job: Job? = null
+    private lateinit var viewBind: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        viewBind = ActivityMainBinding.inflate(layoutInflater)
 
-        navigation.setOnNavigationItemSelectedListener { item ->
+        setContentView(viewBind.root)
+
+        viewBind.navigation.setOnNavigationItemSelectedListener { item ->
             job?.cancel()
             when (item.itemId) {
                 R.id.single -> viewSingle()
@@ -33,12 +36,12 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         }
-        navigation.selectedItemId = R.id.single
+        viewBind.navigation.selectedItemId = R.id.single
     }
 
     private fun viewSingle(): Boolean {
-        description.setText(R.string.description_single)
-        val target = recyclerView.withLinearLayoutManager().attachSingleAdapter()
+        viewBind.description.setText(R.string.description_single)
+        val target = viewBind.recyclerView.withLinearLayoutManager().attachSingleAdapter()
         val dataList = SingleAdapterDataList()
         for (i in 0 until 100) dataList.add(NumberViewItemBindingMemberFunction(i.toString()))
         dataList.addListOfNumberViewItemBindingExtension(listOf(101,
@@ -49,9 +52,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun viewMulti(): Boolean {
-        description.setText(R.string.description_multi)
+        viewBind.description.setText(R.string.description_multi)
         val liveData = viewModel.multiLiveData
-        recyclerView.withLinearLayoutManager()
+        viewBind.recyclerView.withLinearLayoutManager()
                 .attachMultiAdapter()
                 .observeLiveData(liveData, this)
         viewModel.updateData()
@@ -59,8 +62,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun viewParentChild(): Boolean {
-        description.setText(R.string.description_parent_child)
-        val target = recyclerView.withLinearLayoutManager().attachParentChildAdapter()
+        viewBind.description.setText(R.string.description_parent_child)
+        val target = viewBind.recyclerView.withLinearLayoutManager().attachParentChildAdapter()
         val dataList = ParentChildAdapterDataList()
         for (i in 0 until 100) {
             dataList.add(ChildPoko(i.toString()))
@@ -71,8 +74,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun viewDiff(): Boolean {
-        description.setText(R.string.description_diff)
-        val target = recyclerView.withLinearLayoutManager().attachDiffTypeAdapter().enableDiff()
+        viewBind.description.setText(R.string.description_diff)
+        val target = viewBind.recyclerView.withLinearLayoutManager().attachDiffTypeAdapter().enableDiff()
         val map = HashMap<Int, DiffPoko>()
         job = GlobalScope.launch(Dispatchers.Main) {
             var i = 0
