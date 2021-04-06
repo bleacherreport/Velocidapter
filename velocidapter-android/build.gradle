@@ -10,6 +10,10 @@ android {
         versionName "1.0"
     }
 
+    buildFeatures {
+        viewBinding true
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -21,10 +25,11 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.recyclerview:recyclerview:1.0.0'
+    implementation 'androidx.recyclerview:recyclerview:1.1.0'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.3.0'
 
     api project(':velocidapter-annotations')
-//    api 'com.bleacherreport.velocidapter:velocidapter-annotations:1.4.1-SNAPSHOT'
+
 }
 
 apply plugin: "com.vanniktech.maven.publish"

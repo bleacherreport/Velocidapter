@@ -7,4 +7,5 @@ package com.bleacherreport.velocidapterannotations
  * Note: method must be public and take an Any and an Int in that specific order. The Any's specific class
  * type will be used to generate add functions for a ScopedDataList class.
  */
+@Target(AnnotationTarget.FUNCTION)
 annotation class Bind

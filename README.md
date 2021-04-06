@@ -1,6 +1,6 @@
 # Velocidapter
 
-[ ![Download](https://api.bintray.com/packages/bleacherreport/velocidapter/velocidapter/images/download.svg) ](https://bintray.com/bleacherreport/velocidapter)
+[ ![Download](https://img.shields.io/github/v/release/bleacherreport/Velocidapter?label=Github%20Maven%20Version&logo=github) ](https://github.com/orgs/bleacherreport/packages?repo_name=Velocidapter)
 
 A 100% Kotlin functional adapter code generation library
 
@@ -10,10 +10,14 @@ Velocidapter writes your Adapters for you, and all you have to give it is ViewHo
 
 ## Installation
 
-Velocidapter is available on JCenter. Replace `{version}` below with the latest version (above).
+Velocidapter is available on GitHub Packages. Replace `{version}` below with&nbsp;  [ ![Download](https://img.shields.io/github/v/release/bleacherreport/Velocidapter?label=) ](https://github.com/orgs/bleacherreport/packages?repo_name=Velocidapter)&nbsp; (remove the prefix `v`).
 ```groovy
-kapt 'com.bleacherreport:velocidapter:{version}'
-implementation 'com.bleacherreport:velocidapter-android:{version}'
+repositories {
+    mavenCentral()
+}
+
+kapt 'com.bleacherreport.velocidapter:velocidapter:{version}'
+implementation 'com.bleacherreport.velocidapter:velocidapter-android:{version}'
 ```
  If you don't have `kapt` set up in your project already, follow [this](https://kotlinlang.org/docs/reference/kapt.html).
  
@@ -45,30 +49,25 @@ class MainActivity : AppCompatActivity() {
 ```
 
 ```kotlin
-@ViewHolder(adapters = [MyAdapter], layoutResId = R.layout.item_my_string)
-class MyStringViewHolder(override val containerView: View) : 
-        RecyclerView.ViewHolder(containerView), LayoutContainer {
-    
-    @Bind
-    fun bindModel(data: String, position: Int) {
-        textView.text = "$data world"
-    }
+@ViewHolder(adapters = [MyAdapter])
+fun MyStringViewBinding.bind(data: String) {
+    textView.text = "$data world"
 }
 ```
 
 ```kotlin
-@ViewHolder(adapters = [MyAdapter], layoutResId = R.layout.item_my_number)
-class NumberViewHolder(override val containerView: View) : 
-        RecyclerView.ViewHolder(containerView), LayoutContainer {
+@ViewHolder(adapters = [MyAdapter])
+class NumberViewHolder(val binding : MyNumberViewBinding) : 
+        RecyclerView.ViewHolder(binding.root) {
     
     @Bind
-    fun bindModel(data: MyDataModel) {
-        textView.text = "$data 456"
+    fun bindModel(data: Int) {
+        binding.textView.text = "$data 456"
     }
 }
 ```
 
-### Long Version
+# Long Version
 
 Decide a name for your adapter. This is the name your generated classes will be based on.
 
@@ -76,22 +75,52 @@ Decide a name for your adapter. This is the name your generated classes will be 
 const val MyAdapter = "MyAdapter"
 ```
 
-Next, create your ViewHolder. Your Adapter is bound to one or more Adapters using the `adapters` field in the `@ViewHolder` annotation (you see here we use the string defined above). You also specify the layout this ViewHolder infaltes in the `layoutResId` field.
+### ViewHolder Class Example
+-----
+Next, create your ViewHolder. Your Adapter is bound to one or more Adapters using the `adapters` field in the `@ViewHolder` annotation (you see here we use the string defined above). You also specify the `ViewBinding` inside the constructor
 
 ```kotlin
-@ViewHolder(adapters = [MyAdapter], layoutResId = R.layout.item_my_view)
-class StringViewHolder(override val containerView: View) : 
-        RecyclerView.ViewHolder(containerView), LayoutContainer
+@ViewHolder(adapters = [MyAdapter])
+class StringViewHolder(val binding : MyViewBinding) : 
+        RecyclerView.ViewHolder(binding.root)
 ```
 
 Your ViewHolder needs to have a way to be bound with data. You need to annotate any function within the ViewHolder with `@Bind`. The function can have any name and can take one or two parameters.
-1. The first can be of Any type and is your method of binding data to this ViewHolder.
-2. The second must be an Int indicates the position of this element in the list. This parameter is optional.
+1. The first argument must the data model you bind with
+2. **Optional** the Second argument may be `position: Int`
+3. **Optional** the function may extend the `ViewBinding` of the `ViewHolder`
 
 ```kotlin
 @Bind
-fun bindModel(data: String, position: Int)
+fun MyViewBinding.bindModel(data: StringViewHolderModel, position: Int) {
+    textView.text = "${data.text} world"
+}
 ```
+
+### ViewBinding Extension Function Example
+-----
+Next, create your `ViewBinding` Extension Function. Your Adapter is bound to one or more Adapters using the `adapters` field in the `@ViewHolder` annotation (you see here we use the string defined above).
+
+Your `ViewBinding` extension function can have any name and can take one parameter.
+1. The method must extend a `ViewBinding`
+2. The next argument must be the data model you bind with
+
+```kotlin
+@ViewHolder(adapters = [MyAdapter])
+fun MyViewBinding.bindModel(data: StringViewBindingModel) {
+    textView.text = "${data.text} world"
+}
+
+object ViewBindingsUtil {
+    @ViewHolder(adapters = [MyAdapter])
+    fun MyViewBinding.bindModel(data: StringViewBindingObjectModel) {
+        textView.text = "${data.text} world"
+    }
+}
+```
+
+### Build
+-----
 
 Now you should be ready to run a quick build of your project, and the Adapter will be generated for you. Now you can bind it to it's RecyclerView, likely somewhere in your activity or fragment. The function `attachMyAdapter()` is generated based on your adapter name and will return a `AdapterDataTarget`
 
@@ -109,8 +138,23 @@ val dataList = MyAdapterDataList()
 You can only add data to this list that conforms to the data that's able to be bound by the ViewHolders in this Adapter. For this example, since the Adapter only has one ViewHolder, which takes `Strings`, the `add()` functions on this DataList only accepts Strings.
 
 ```kotlin
-dataList.add("hello")
-dataList.addListOfString(listOf("hello", "world"))
+// ViewHolder Class Example
+dataList.addListOfStringViewHolderModel(
+    listOf(
+        StringViewHolderModel("hello"), 
+        StringViewHolderModel("world")
+    )
+)
+// ViewBinding Top Level Extension Function Example
+dataList.addListOfStringViewBindingModel(
+    listOf(
+        StringViewBindingModel("hello"), 
+        StringViewBindingModel("world")
+    )
+)
+// ViewBinding Object Member Extension Function Example
+dataList.add(StringViewBindingObjectModel("hello"))
+dataList.add(StringViewBindingObjectModel("world"))
 ```
 
 This list is passed to the Adapter using the `AdapterDataTarget` update function `updateDataset()`. This function should be the primary way to update data. For this data set, since it's not `DiffComparable`, it will simply reset the data and call `notifyDataSetChanged()` on the Adapter. For more complex usages, see below.
