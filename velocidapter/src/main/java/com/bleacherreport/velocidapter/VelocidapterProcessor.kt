@@ -193,9 +193,9 @@ class VelocidapterProcessor : AbstractProcessor() {
 
             true
         } catch (e: Exception) {
-            processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, e.localizedMessage + "\r\n")
+            processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "${e.message}\r\n")
             e.stackTrace.forEach {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, it.toString() + "\r\n")
+                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "     ${it}\r\n")
             }
             false
         }
