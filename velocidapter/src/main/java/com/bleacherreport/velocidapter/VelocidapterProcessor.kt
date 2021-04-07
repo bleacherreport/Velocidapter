@@ -121,7 +121,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                             viewBindingTypeElement
                         }
                         .firstOrNull()
-                        ?: throw VelocidapterException("@ViewHolder for class ${viewHolderElement} must have a constructor with a single param that is of type ViewBinding")
+                        ?: throw VelocidapterException("@ViewHolder for class ${viewHolderElement.simpleName} must have a constructor with a single param that is of type ViewBinding")
 
                     getFunctions(viewHolderElement,
                         binding.qualifiedName?.toString()!!) { bindFunction, unbindFunction, attachFunction, detachFunction ->
@@ -193,12 +193,17 @@ class VelocidapterProcessor : AbstractProcessor() {
 
             true
         } catch (e: Exception) {
-            processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "${e.message}\r\n")
+            printMessage("ERROR = ${e.message}")
+            printMessage("")
             e.stackTrace.forEach {
                 processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "     ${it}\r\n")
             }
             false
         }
+    }
+
+    fun printMessage(message: String?, kind: Diagnostic.Kind = Diagnostic.Kind.ERROR) {
+        processingEnv.messager.printMessage(kind, "$message\r\n")
     }
 
     private fun getDataList(adapter: BindableAdapter): TypeSpec {
