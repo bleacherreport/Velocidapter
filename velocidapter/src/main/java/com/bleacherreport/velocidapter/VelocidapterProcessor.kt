@@ -231,10 +231,19 @@ class VelocidapterProcessor : AbstractProcessor() {
                         addStatement("val viewGroup = %T(activity)",
                             ClassName.bestGuess("android.widget.FrameLayout"))
 
+                        addStatement("     val tempuseNewLayouts = %T.useNewLayouts\n" +
+                                "      %T.useNewLayouts = {true}",
+                            ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
+                            ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"))
+
                         bindingTester.forEach {
                             it()
                             addStatement("viewGroup.removeAllViews()")
                         }
+                        addStatement(
+                            "%T.useNewLayouts = tempuseNewLayouts",
+                            ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
+                        )
 
                         addStatement("%T.makeText(activity, \"Successful inflation of New Layouts\", Toast.LENGTH_LONG).show()",
                             ClassName.bestGuess("android.widget.Toast"))
