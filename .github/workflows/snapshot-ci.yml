@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - snapshot/**
 
 env:
   JAVA_TOOL_OPTIONS: -Xmx5120m
