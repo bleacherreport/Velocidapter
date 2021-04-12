@@ -2,10 +2,12 @@ package com.bleacherreport.velocidapterdemo.single
 
 import androidx.recyclerview.widget.RecyclerView
 import com.bleacherreport.velocidapterannotations.Bind
+import com.bleacherreport.velocidapterannotations.VelociBinding
 import com.bleacherreport.velocidapterannotations.VelociSuffix
 import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.bleacherreport.velocidapterdemo.MainActivity
 import com.bleacherreport.velocidapterdemo.databinding.ItemNumberBinding
+import com.bleacherreport.velocidapterdemo.databinding.ItemNumberNewBinding
 
 /** ViewBinding Top Level Extension Function **/
 @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter],
@@ -23,13 +25,20 @@ object Test {
 }
 
 /** ViewBinding ViewHolder Class **/
-@ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter],
-    newBindingSuffix = VelociSuffix.VELOCI_NEW)
+@ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], velociBinding = VelociBinding.ONLY_OLD)
 class NumberViewHolder(val binding: ItemNumberBinding) : RecyclerView.ViewHolder(binding.root) {
     @Bind
     fun bind(item: NumberViewItemViewHolder, position: Int) {
 
         binding.bind(item.number.copy(text = item.number.text + " @ position $position"))
+    }
+}
+
+@ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], velociBinding = VelociBinding.ONLY_NEW)
+class NumberViewHolderNew(val binding: ItemNumberNewBinding) : RecyclerView.ViewHolder(binding.root) {
+    @Bind
+    fun bind(item: NumberViewItemViewHolder, position: Int) {
+        binding.textView.text = "New Binding ${item.number.text}"
     }
 }
 

@@ -96,7 +96,8 @@ class ViewHolderBindFunction private constructor(
             ClassName.bestGuess(argumentType)
         )
         addStatement(
-            "}",
+            "} \n" +
+                    "return@FunctionalAdapter"
         )
         endControlFlow()
     }

@@ -15,6 +15,7 @@ interface BaseViewHolderBuilder {
     val attachFunction: FunctionName?
     val detachFunction: FunctionName?
     val createViewHolder: CodeBlock.Builder.() -> Unit
+    val annotation: ViewHolder
 }
 
 data class BindMethodViewHolderBuilder(
@@ -25,7 +26,11 @@ data class BindMethodViewHolderBuilder(
     override val attachFunction: FunctionName?,
     override val detachFunction: FunctionName?,
     override val createViewHolder: CodeBlock.Builder.() -> Unit,
-) : BaseViewHolderBuilder
+) : BaseViewHolderBuilder {
+    override val annotation by lazy {
+        element.getAnnotation(ViewHolder::class.java)!!
+    }
+}
 
 data class ClassViewHolderBuilder(
     override val element: Element,
@@ -36,6 +41,9 @@ data class ClassViewHolderBuilder(
     override val attachFunction: FunctionName?,
     override val detachFunction: FunctionName?,
 ) : BaseViewHolderBuilder {
+    override val annotation by lazy {
+        element.getAnnotation(ViewHolder::class.java)!!
+    }
     override val createViewHolder: CodeBlock.Builder.() -> Unit = {
         addStatement(
             "val inflater = %T.from(viewGroup.context)",

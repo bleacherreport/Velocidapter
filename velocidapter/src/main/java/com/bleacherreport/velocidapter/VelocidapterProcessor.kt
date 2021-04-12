@@ -214,6 +214,18 @@ class VelocidapterProcessor : AbstractProcessor() {
             adapterList.forEach { entry ->
                 val builder = FileSpec.builder("com.bleacherreport.velocidapter", entry.name)
 
+                for (viewHolder in entry.viewHolders.filter { it.annotation.velociBinding == VelociBinding.ONLY_OLD }) {
+                    entry.viewHolders.filter { it.annotation.velociBinding == VelociBinding.ONLY_NEW }
+                        .firstOrNull { it.bindFunction.argumentType == viewHolder.bindFunction.argumentType }
+                        ?: throw VelocidapterException("Must be a ONLY_NEW for ONLY_OLD of data arg typpe ${viewHolder.bindFunction.argumentType}")
+                }
+
+                for (viewHolder in entry.viewHolders.filter { it.annotation.velociBinding == VelociBinding.ONLY_NEW }) {
+                    entry.viewHolders.filter { it.annotation.velociBinding == VelociBinding.ONLY_OLD }
+                        .firstOrNull { it.bindFunction.argumentType == viewHolder.bindFunction.argumentType }
+                        ?: throw VelocidapterException("Must be a ONLY_OLD for ONLY_NEW of data arg typpe ${viewHolder.bindFunction.argumentType}")
+                }
+
                 builder.addType(getDataList(entry))
                 builder.addType(getDataTarget(entry))
                 builder.addFunction(getAdapterKtx(entry))
@@ -272,22 +284,24 @@ class VelocidapterProcessor : AbstractProcessor() {
             .superclass(ClassName("com.bleacherreport.velocidapterandroid", "ScopedDataList"))
 
         val dataClassNames = mutableListOf<ClassName>()
-        adapter.viewHolders.forEach { viewHolder ->
-            val argumentClass = viewHolder.bindFunction.argumentType
-            val simpleClassName = argumentClass.substringAfterLast(".")
-            val argumentClassName = ClassName.bestGuess(argumentClass)
-            dataClassNames.add(argumentClassName)
-            typeSpec.addFunction(FunSpec.builder("add")
-                .addParameter("model", argumentClassName)
-                .addStatement("listInternal.add(model)")
-                .build())
+        adapter.viewHolders
+            .filterNot { it.annotation.velociBinding == VelociBinding.ONLY_OLD }
+            .forEach { viewHolder ->
+                val argumentClass = viewHolder.bindFunction.argumentType
+                val simpleClassName = argumentClass.substringAfterLast(".")
+                val argumentClassName = ClassName.bestGuess(argumentClass)
+                dataClassNames.add(argumentClassName)
+                typeSpec.addFunction(FunSpec.builder("add")
+                    .addParameter("model", argumentClassName)
+                    .addStatement("listInternal.add(model)")
+                    .build())
 
-            typeSpec.addFunction(FunSpec.builder("addListOf$simpleClassName")
-                .addParameter("list", ClassName("kotlin.collections", "List")
-                    .parameterizedBy(argumentClassName))
-                .addStatement("listInternal.addAll(list)")
-                .build())
-        }
+                typeSpec.addFunction(FunSpec.builder("addListOf$simpleClassName")
+                    .addParameter("list", ClassName("kotlin.collections", "List")
+                        .parameterizedBy(argumentClassName))
+                    .addStatement("listInternal.addAll(list)")
+                    .build())
+            }
 
         typeSpec.addProperty(PropertySpec.builder("listClasses", ClassName("kotlin.collections", "List")
             .parameterizedBy(ClassName("java.lang", "Class")
@@ -345,11 +359,24 @@ class VelocidapterProcessor : AbstractProcessor() {
     private fun getCreateViewHolderLambda(viewHolders: Set<BaseViewHolderBuilder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ viewGroup, type ->")
-            viewHolders.forEachIndexed { index, viewHolder ->
-                beginControlFlow("if (type == $index)")
-                viewHolder.createViewHolder(this)
-                endControlFlow()
-            }
+            viewHolders.filterNot { it.annotation.velociBinding == VelociBinding.ONLY_NEW }
+                .forEachIndexed { index, viewHolder ->
+                    beginControlFlow("if (type == $index)")
+                    if (viewHolder.annotation.velociBinding == VelociBinding.ONLY_OLD) {
+                        addStatement(
+                            "if (%T.useNewLayouts()){ \n",
+                            ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
+                        )
+                        viewHolders.firstOrNull { it.annotation.velociBinding == VelociBinding.ONLY_NEW && it.bindFunction.argumentType == viewHolder.bindFunction.argumentType }
+                            ?.createViewHolder?.invoke(this)
+                        addStatement("} else {")
+                        viewHolder.createViewHolder(this)
+                        addStatement("}")
+                    } else {
+                        viewHolder.createViewHolder(this)
+                    }
+                    endControlFlow()
+                }
             addStatement("throw RuntimeException(%S)", "Type not found ViewHolder set.")
             endControlFlow()
         }
@@ -359,14 +386,15 @@ class VelocidapterProcessor : AbstractProcessor() {
         return buildCodeBlock {
             beginControlFlow("{ position, dataset ->")
             addStatement("val dataItem = dataset[position]")
-            viewHolders.forEachIndexed { index, viewHolder ->
-                beginControlFlow(
-                    "if (dataItem::class == %T::class)",
-                    ClassName.bestGuess(viewHolder.bindFunction.argumentType)
-                )
-                addStatement("return@FunctionalAdapter $index")
-                endControlFlow()
-            }
+            viewHolders.filterNot { it.annotation.velociBinding == VelociBinding.ONLY_NEW }
+                .forEachIndexed { index, viewHolder ->
+                    beginControlFlow(
+                        "if (dataItem::class == %T::class)",
+                        ClassName.bestGuess(viewHolder.bindFunction.argumentType)
+                    )
+                    addStatement("return@FunctionalAdapter $index")
+                    endControlFlow()
+                }
             addStatement("return@FunctionalAdapter -1")
             endControlFlow()
         }
