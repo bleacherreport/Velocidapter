@@ -45,9 +45,9 @@ data class ClassViewHolderBuilder(
             ?.also {
                 val newBinding = "${binding.canonicalName.dropLast("Binding".length)}${it}Binding"
                 val newBindingClass = ClassName.bestGuess(newBinding)
-                addStatement(
+                addStatementNewLayout(
                     "val binding = when(%T.useNewLayouts()){\n" +
-                            "            true -> %T.bind(%T.inflate(%T.from(context), viewGroup, false).root)\n" +
+                            "            true -> %T.bind(%T.inflate(%T.from(viewGroup.context), viewGroup, false).root)\n" +
                             "            false ->  %T.inflate(%T.from(viewGroup.context), viewGroup, false)\n" +
                             "        }",
                     ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),

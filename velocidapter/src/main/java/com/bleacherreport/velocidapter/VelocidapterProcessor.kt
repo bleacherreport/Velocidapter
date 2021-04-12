@@ -14,9 +14,22 @@ import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.ExecutableType
 import javax.tools.Diagnostic
 
+val bindingTester = mutableListOf<CodeBlock.Builder.() -> Unit>()
+
+fun CodeBlock.Builder.addStatementNewLayout(format: String, vararg items: Any) {
+    addStatement(format, *items)
+    bindingTester.add {
+        this.addStatement(format.replace("val binding = ", ""), *items)
+    }
+}
+
 
 @AutoService(Processor::class)
 class VelocidapterProcessor : AbstractProcessor() {
+
+    init {
+        bindingTester.clear()
+    }
 
     override fun getSupportedAnnotationTypes(): MutableSet<String> {
         return mutableSetOf(ViewHolder::class.java.name,
@@ -138,9 +151,9 @@ class VelocidapterProcessor : AbstractProcessor() {
                                 val newBinding = "${bindingName.dropLast("Binding".length)}${it}Binding"
                                 val currentBindingClass = ClassName.bestGuess(bindingName)
                                 val newBindingClass = ClassName.bestGuess(newBinding)
-                                addStatement(
+                                addStatementNewLayout(
                                     "val binding = when(%T.useNewLayouts()){\n" +
-                                            "            true -> %T.bind(%T.inflate(%T.from(context), viewGroup, false).root)\n" +
+                                            "            true -> %T.bind(%T.inflate(%T.from(viewGroup.context), viewGroup, false).root)\n" +
                                             "            false ->  %T.inflate(%T.from(viewGroup.context), viewGroup, false)\n" +
                                             "        }",
                                     ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
@@ -166,6 +179,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                         }
                     }
                 }
+
 
 
             // all ViewBinding
@@ -207,6 +221,29 @@ class VelocidapterProcessor : AbstractProcessor() {
                 val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
                 builder.build().writeTo(File(kaptKotlinGeneratedDir, "${entry.name}.kt"))
             }
+
+            val builder = FileSpec.builder("com.bleacherreport.velocidapter", "VelocidapterTestInflation")
+
+            builder.addType(TypeSpec.objectBuilder("VelocidapterTestInflation").addFunction(
+                FunSpec.builder("test")
+                    .addParameter(ParameterSpec("activity", ClassName.bestGuess("android.app.Activity")))
+                    .addCode(buildCodeBlock {
+                        addStatement("val viewGroup = %T(activity)",
+                            ClassName.bestGuess("android.widget.FrameLayout"))
+
+                        bindingTester.forEach {
+                            it()
+                            addStatement("viewGroup.removeAllViews()")
+                        }
+
+                        addStatement("%T.makeText(activity, \"Successful inflation of New Layouts\", Toast.LENGTH_LONG).show()",
+                            ClassName.bestGuess("android.widget.Toast"))
+                    })
+                    .build()
+            ).build())
+
+            val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
+            builder.build().writeTo(File(kaptKotlinGeneratedDir, "VelocidapterTestInflation.kt"))
 
             true
         } catch (e: Exception) {
