@@ -6,6 +6,7 @@ import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.bleacherreport.velocidapterdemo.MainActivity
 import com.bleacherreport.velocidapterdemo.databinding.ItemNumberBinding
 
+
 /** ViewBinding Top Level Extension Function **/
 @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter])
 fun ItemNumberBinding.bind(item: NumberViewItemBindingExtension) {

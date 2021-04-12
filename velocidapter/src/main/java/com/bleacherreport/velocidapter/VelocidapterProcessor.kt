@@ -14,9 +14,14 @@ import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.ExecutableType
 import javax.tools.Diagnostic
 
+val errors = mutableListOf<String>()
 
 @AutoService(Processor::class)
 class VelocidapterProcessor : AbstractProcessor() {
+
+    init {
+        errors.clear()
+    }
 
     override fun getSupportedAnnotationTypes(): MutableSet<String> {
         return mutableSetOf(ViewHolder::class.java.name,
@@ -42,7 +47,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             fun getFunctions(
                 viewHolderElement: Element,
                 viewBinding: String,
-                callback: (bindFunction: ViewHolderBindFunction, unbindFunction: FunctionName?, attachFunction: FunctionName?, detachFunction: FunctionName?) -> Unit,
+                callback: (bindFunction: ViewHolderBindFunction?, unbindFunction: FunctionName?, attachFunction: FunctionName?, detachFunction: FunctionName?) -> Unit,
             ) {
                 var bindFunction: ViewHolderBindFunction? = null
                 var unbindFunction: FunctionName? = null
@@ -52,7 +57,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                 viewHolderElement.enclosedElements.forEach { enclosedElement ->
                     bindFunctionList?.find { it == enclosedElement }?.let { bindElement ->
                         if (bindFunction != null) {
-                            throw VelocidapterException("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $VIEW_HOLDER_BIND_INSTRUCTION")
+                            errors.add("${viewHolderElement.simpleName} has multiple @Bind annotated methods. $VIEW_HOLDER_BIND_INSTRUCTION")
                         }
                         bindFunction = ViewHolderBindFunction.from(
                             bindElement,
@@ -63,29 +68,29 @@ class VelocidapterProcessor : AbstractProcessor() {
 
                     unbindFunctionList?.find { it == enclosedElement }?.let { bindElement ->
                         if (unbindFunction != null) {
-                            throw VelocidapterException("${viewHolderElement.simpleName} has more than one @Unbind annotated method.")
+                            errors.add("${viewHolderElement.simpleName} has more than one @Unbind annotated method.")
                         }
                         unbindFunction = FunctionName.from(bindElement)
                     }
 
                     attachFunctionList?.find { it == enclosedElement }?.let { attachElement ->
                         if (attachFunction != null) {
-                            throw VelocidapterException("${viewHolderElement.simpleName} has multiple @OnAttachToWindow annotated methods.")
+                            errors.add("${viewHolderElement.simpleName} has multiple @OnAttachToWindow annotated methods.")
                         }
                         attachFunction = FunctionName.from(attachElement)
                     }
 
                     detatchFunctionList?.find { it == enclosedElement }?.let { detachElement ->
                         if (detachFunction != null) {
-                            throw VelocidapterException("${viewHolderElement.simpleName} has multiple @OnDetachFromWindow annotated methods.")
+                            errors.add("${viewHolderElement.simpleName} has multiple @OnDetachFromWindow annotated methods.")
                         }
                         detachFunction = FunctionName.from(detachElement)
                     }
                 }
 
+
                 callback(
-                    bindFunction
-                        ?: throw VelocidapterException("${viewHolderElement.simpleName} is missing an @Bind method. $VIEW_HOLDER_BIND_INSTRUCTION"),
+                    bindFunction,
                     unbindFunction,
                     attachFunction,
                     detachFunction
@@ -121,10 +126,18 @@ class VelocidapterProcessor : AbstractProcessor() {
                             viewBindingTypeElement
                         }
                         .firstOrNull()
-                        ?: throw VelocidapterException("@ViewHolder for class ${viewHolderElement.simpleName} must have a constructor with a single param that is of type ViewBinding")
+                        ?: kotlin.run {
+                            errors.add("@ViewHolder for class ${viewHolderElement.simpleName} must have a constructor with a single param that is of type ViewBinding")
+                            return@forEach
+                        }
 
                     getFunctions(viewHolderElement,
                         binding.qualifiedName?.toString()!!) { bindFunction, unbindFunction, attachFunction, detachFunction ->
+
+                        if (bindFunction == null) {
+                            errors.add("${viewHolderElement.simpleName} is missing an @Bind method. $VIEW_HOLDER_BIND_INSTRUCTION")
+                            return@getFunctions
+                        }
 
                         val viewHolder = BindMethodViewHolderBuilder(
                             viewHolderElement,
@@ -158,7 +171,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                 }
                 ?.forEach { viewHolderBindingElement ->
 
-                    val bindFunction = ViewBindingFunction.from(viewHolderBindingElement)
+                    val bindFunction = ViewBindingFunction.from(viewHolderBindingElement) ?: return@forEach
                     val annotation = viewHolderBindingElement.getAnnotation(ViewHolder::class.java)!!
 
                     val viewHolder = ClassViewHolderBuilder(
@@ -179,6 +192,13 @@ class VelocidapterProcessor : AbstractProcessor() {
                     }
                 }
 
+            if (errors.isNotEmpty()) {
+                printMessage("")
+                errors.forEach {
+                    printMessage("ERROR = $it")
+                }
+                return false
+            }
 
             adapterList.forEach { entry ->
                 val builder = FileSpec.builder("com.bleacherreport.velocidapter", entry.name)
@@ -193,11 +213,8 @@ class VelocidapterProcessor : AbstractProcessor() {
 
             true
         } catch (e: Exception) {
-            printMessage("ERROR = ${e.message}")
             printMessage("")
-            e.stackTrace.forEach {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "     ${it}\r\n")
-            }
+            printMessage("ERROR = ${e.message}")
             false
         }
     }
@@ -346,8 +363,6 @@ class VelocidapterProcessor : AbstractProcessor() {
         const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
     }
 }
-
-class VelocidapterException(override val message: String?) : java.lang.Exception(message)
 
 
 data class BindableAdapter(val name: String, val viewHolders: MutableSet<BaseViewHolderBuilder> = LinkedHashSet()) {
