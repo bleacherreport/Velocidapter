@@ -133,7 +133,24 @@ class VelocidapterProcessor : AbstractProcessor() {
                             unbindFunction,
                             attachFunction,
                             detachFunction) {
-                            addStatement(
+                            annotation.newBindingSuffix.takeIf { it != VelociSuffix.VELOCI_NONE }?.also {
+                                val bindingName = binding.asType().toString()
+                                val newBinding = "${bindingName.dropLast("Binding".length)}${it}Binding"
+                                val currentBindingClass = ClassName.bestGuess(bindingName)
+                                val newBindingClass = ClassName.bestGuess(newBinding)
+                                addStatement(
+                                    "val binding = when(%T.useNewLayouts()){\n" +
+                                            "            true -> %T.bind(%T.inflate(%T.from(context), viewGroup, false).root)\n" +
+                                            "            false ->  %T.inflate(%T.from(viewGroup.context), viewGroup, false)\n" +
+                                            "        }",
+                                    ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
+                                    currentBindingClass,
+                                    newBindingClass,
+                                    ClassName("android.view", "LayoutInflater"),
+                                    currentBindingClass,
+                                    ClassName("android.view", "LayoutInflater"),
+                                )
+                            } ?: addStatement(
                                 "val binding = %T.inflate(%T.from(viewGroup.context), viewGroup, false)",
                                 ClassName.bestGuess(binding.asType().toString()),
                                 ClassName("android.view", "LayoutInflater"),
@@ -193,11 +210,9 @@ class VelocidapterProcessor : AbstractProcessor() {
 
             true
         } catch (e: Exception) {
+            printMessage("ERROR")
             printMessage("ERROR = ${e.message}")
             printMessage("")
-            e.stackTrace.forEach {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "     ${it}\r\n")
-            }
             false
         }
     }

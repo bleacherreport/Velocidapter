@@ -1,5 +1,7 @@
 package com.bleacherreport.velocidapter
 
+import com.bleacherreport.velocidapterannotations.VelociSuffix
+import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
@@ -39,7 +41,23 @@ data class ClassViewHolderBuilder(
             "val inflater = %T.from(viewGroup.context)",
             ClassName("android.view", "LayoutInflater")
         )
-        addStatement(
+        element.getAnnotation(ViewHolder::class.java)!!.newBindingSuffix.takeIf { it != VelociSuffix.VELOCI_NONE }
+            ?.also {
+                val newBinding = "${binding.canonicalName.dropLast("Binding".length)}${it}Binding"
+                val newBindingClass = ClassName.bestGuess(newBinding)
+                addStatement(
+                    "val binding = when(%T.useNewLayouts()){\n" +
+                            "            true -> %T.bind(%T.inflate(%T.from(context), viewGroup, false).root)\n" +
+                            "            false ->  %T.inflate(%T.from(viewGroup.context), viewGroup, false)\n" +
+                            "        }",
+                    ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
+                    binding,
+                    newBindingClass,
+                    ClassName("android.view", "LayoutInflater"),
+                    binding,
+                    ClassName("android.view", "LayoutInflater"),
+                )
+            } ?: addStatement(
             "val binding = %T.inflate(inflater, viewGroup, false)",
             binding
         )

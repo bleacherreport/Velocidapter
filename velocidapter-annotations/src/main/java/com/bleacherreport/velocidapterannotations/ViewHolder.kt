@@ -32,4 +32,9 @@ package com.bleacherreport.velocidapterannotations
  *
  */
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
-annotation class ViewHolder(vararg val adapters: String)
+annotation class ViewHolder(vararg val adapters: String, val newBindingSuffix: String = VelociSuffix.VELOCI_NONE)
+
+object VelociSuffix {
+    const val VELOCI_NEW = "New"
+    const val VELOCI_NONE = "NONE"
+}

@@ -3,6 +3,7 @@ package com.bleacherreport.velocidapterdemo
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.bleacherreport.velocidapter.*
+import com.bleacherreport.velocidapterandroid.VelocidapterSettings
 import com.bleacherreport.velocidapterandroid.enableDiff
 import com.bleacherreport.velocidapterandroid.observeLiveData
 import com.bleacherreport.velocidapterandroid.withLinearLayoutManager
@@ -23,6 +24,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewBind = ActivityMainBinding.inflate(layoutInflater)
+
+        VelocidapterSettings.useNewLayouts = { true }
 
         setContentView(viewBind.root)
 
