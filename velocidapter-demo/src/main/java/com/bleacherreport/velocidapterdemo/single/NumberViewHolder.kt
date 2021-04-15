@@ -9,6 +9,7 @@ import com.bleacherreport.velocidapterdemo.MainActivity
 import com.bleacherreport.velocidapterdemo.databinding.ItemNumberBinding
 import com.bleacherreport.velocidapterdemo.databinding.ItemNumberNewBinding
 
+
 /** ViewBinding Top Level Extension Function **/
 @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter],
     newBindingSuffix = VelociSuffix.VELOCI_NEW)

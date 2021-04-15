@@ -40,18 +40,27 @@ class ViewBindingFunction private constructor(
     }
 
     companion object {
-        fun from(element: Element): ViewBindingFunction {
+        fun from(element: Element): ViewBindingFunction? {
             val executableType = (element.asType() as ExecutableType)
             val parameters = executableType.parameterTypes
 
             val viewBindingParamName = executableType.viewBindingParamNameAtPosition(0)
-                ?: throw VelocidapterException("@ViewHolderBind method ${element.methodFullName()} should be an extension method for a ViewBinding. $BIND_INSTRUCTION")
+                ?: kotlin.run {
+                    errors.add("@ViewHolderBind method ${element.methodFullName()} should be an extension method for a ViewBinding. $BIND_INSTRUCTION")
+                    return null
+                }
 
             val dataParamName = executableType.paramNameAtPosition(1)
-                ?: throw VelocidapterException("@ViewHolderBind method ${element.methodFullName()} second param should be a data param. $BIND_INSTRUCTION")
+                ?: kotlin.run {
+                    errors.add("@ViewHolderBind method ${element.methodFullName()} second param should be a data param. $BIND_INSTRUCTION")
+                    return null
+                }
 
             if (parameters.size > 2) {
-                throw VelocidapterException("@ViewHolderBind method ${element.methodFullName()} has too many params. $BIND_INSTRUCTION")
+                kotlin.run {
+                    errors.add("@ViewHolderBind method ${element.methodFullName()} has too many params. $BIND_INSTRUCTION")
+                    return null
+                }
             }
 
             return ViewBindingFunction(
@@ -103,30 +112,40 @@ class ViewHolderBindFunction private constructor(
     }
 
     companion object {
-        fun from(element: Element, viewHolderName: String, bindingType: String): ViewHolderBindFunction {
+        fun from(element: Element, viewHolderName: String, bindingType: String): ViewHolderBindFunction? {
             val executableType = (element.asType() as ExecutableType)
 
             var startingPosition = 0
             val viewBindingParamName = executableType.viewBindingParamNameAtPosition(startingPosition)
             if (viewBindingParamName != null) {
                 if (viewBindingParamName != bindingType)
-                    throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName} viewBinding type was $viewBindingParamName but should be $bindingType. $VIEW_HOLDER_BIND_INSTRUCTION")
+                    kotlin.run {
+                        errors.add("@Bind method $viewHolderName.${element.simpleName} viewBinding type was $viewBindingParamName but should be $bindingType. $VIEW_HOLDER_BIND_INSTRUCTION")
+                        return null
+                    }
                 startingPosition++
             }
 
             val dataParamName = executableType.paramNameAtPosition(startingPosition++)
-                ?: throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName} data param is required. $VIEW_HOLDER_BIND_INSTRUCTION")
+                ?: kotlin.run {
+                    errors.add("@Bind method $viewHolderName.${element.simpleName} data param is required. $VIEW_HOLDER_BIND_INSTRUCTION")
+                    return null
+                }
 
             val hasPositionParam = executableType.parameterTypes
                 .getOrNull(startingPosition++)
                 ?.let {
                     if (it !is PrimitiveType || it.kind != TypeKind.INT)
-                        throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName} second parameter is not an Int. $VIEW_HOLDER_BIND_INSTRUCTION")
+                        kotlin.run {
+                            errors.add("@Bind method $viewHolderName.${element.simpleName} second parameter is not an Int. $VIEW_HOLDER_BIND_INSTRUCTION")
+                            return null
+                        }
                     true
                 } ?: false
 
             executableType.paramNameAtPosition(startingPosition)?.let {
-                throw VelocidapterException("@Bind method $viewHolderName.${element.simpleName}$executableType has too many params = ${executableType.parameterTypes.size}. $VIEW_HOLDER_BIND_INSTRUCTION")
+                errors.add("@Bind method $viewHolderName.${element.simpleName}$executableType has too many params = ${executableType.parameterTypes.size}. $VIEW_HOLDER_BIND_INSTRUCTION")
+                return null
             }
 
             return ViewHolderBindFunction(element,
