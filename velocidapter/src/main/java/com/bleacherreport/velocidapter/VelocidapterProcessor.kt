@@ -261,7 +261,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             roundEnv?.getElementsAnnotatedWith(VelocidapterOptions::class.java)?.firstOrNull()
                 ?.getAnnotation(VelocidapterOptions::class.java)?.also {
                     if (it.testInflations) {
-                        createTestInflation()
+                        createTestInflation(it.testInflationSuffix)
                     }
                 }
 
@@ -273,8 +273,8 @@ class VelocidapterProcessor : AbstractProcessor() {
         }
     }
 
-    fun createTestInflation() {
-        val builder = FileSpec.builder("com.bleacherreport.velocidapter", "VelocidapterTestInflation")
+    fun createTestInflation(suffix: String) {
+        val builder = FileSpec.builder("com.bleacherreport.velocidapter", "VelocidapterTestInflation$suffix")
 
         builder.addType(TypeSpec.objectBuilder("VelocidapterTestInflation").addFunction(
             FunSpec.builder("test")
