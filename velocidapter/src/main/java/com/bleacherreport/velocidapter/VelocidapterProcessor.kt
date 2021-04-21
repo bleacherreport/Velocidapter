@@ -35,6 +35,7 @@ class VelocidapterProcessor : AbstractProcessor() {
 
     override fun getSupportedAnnotationTypes(): MutableSet<String> {
         return mutableSetOf(ViewHolder::class.java.name,
+            VelocidapterOptions::class.java.name,
             Bind::class.java.name,
             Unbind::class.java.name,
             OnAttachToWindow::class.java.name,
@@ -257,37 +258,12 @@ class VelocidapterProcessor : AbstractProcessor() {
                 builder.build().writeTo(File(kaptKotlinGeneratedDir, "${entry.name}.kt"))
             }
 
-            val builder = FileSpec.builder("com.bleacherreport.velocidapter", "VelocidapterTestInflation")
-
-            builder.addType(TypeSpec.objectBuilder("VelocidapterTestInflation").addFunction(
-                FunSpec.builder("test")
-                    .addParameter(ParameterSpec("activity", ClassName.bestGuess("android.app.Activity")))
-                    .addCode(buildCodeBlock {
-                        addStatement("val viewGroup = %T(activity)",
-                            ClassName.bestGuess("android.widget.FrameLayout"))
-
-                        addStatement("     val tempuseNewLayouts = %T.useNewLayouts\n" +
-                                "      %T.useNewLayouts = {true}",
-                            ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
-                            ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"))
-
-                        bindingTester.forEach {
-                            it()
-                            addStatement("viewGroup.removeAllViews()")
-                        }
-                        addStatement(
-                            "%T.useNewLayouts = tempuseNewLayouts",
-                            ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
-                        )
-
-                        addStatement("%T.makeText(activity, \"Successful inflation of New Layouts\", Toast.LENGTH_LONG).show()",
-                            ClassName.bestGuess("android.widget.Toast"))
-                    })
-                    .build()
-            ).build())
-
-            val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
-            builder.build().writeTo(File(kaptKotlinGeneratedDir, "VelocidapterTestInflation.kt"))
+            roundEnv?.getElementsAnnotatedWith(VelocidapterOptions::class.java)?.firstOrNull()
+                ?.getAnnotation(VelocidapterOptions::class.java)?.also {
+                    if (it.testInflations) {
+                        createTestInflation()
+                    }
+                }
 
             true
         } catch (e: Exception) {
@@ -295,6 +271,40 @@ class VelocidapterProcessor : AbstractProcessor() {
             printMessage("ERROR = ${e.message}")
             true
         }
+    }
+
+    fun createTestInflation() {
+        val builder = FileSpec.builder("com.bleacherreport.velocidapter", "VelocidapterTestInflation")
+
+        builder.addType(TypeSpec.objectBuilder("VelocidapterTestInflation").addFunction(
+            FunSpec.builder("test")
+                .addParameter(ParameterSpec("activity", ClassName.bestGuess("android.app.Activity")))
+                .addCode(buildCodeBlock {
+                    addStatement("val viewGroup = %T(activity)",
+                        ClassName.bestGuess("android.widget.FrameLayout"))
+
+                    addStatement("     val tempuseNewLayouts = %T.useNewLayouts\n" +
+                            "      %T.useNewLayouts = {true}",
+                        ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
+                        ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"))
+
+                    bindingTester.forEach {
+                        it()
+                        addStatement("viewGroup.removeAllViews()")
+                    }
+                    addStatement(
+                        "%T.useNewLayouts = tempuseNewLayouts",
+                        ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
+                    )
+
+                    addStatement("%T.makeText(activity, \"Successful inflation of New Layouts\", Toast.LENGTH_LONG).show()",
+                        ClassName.bestGuess("android.widget.Toast"))
+                })
+                .build()
+        ).build())
+
+        val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
+        builder.build().writeTo(File(kaptKotlinGeneratedDir, "VelocidapterTestInflation.kt"))
     }
 
     fun printMessage(message: String?, kind: Diagnostic.Kind = Diagnostic.Kind.ERROR) {
