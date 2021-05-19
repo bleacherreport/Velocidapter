@@ -54,6 +54,7 @@ data class ClassViewHolderBuilder(
                 val newBinding = "${binding.canonicalName.dropLast("Binding".length)}${it}Binding"
                 val newBindingClass = ClassName.bestGuess(newBinding)
                 addStatementNewLayout(
+                    binding,
                     "val binding = when(%T.useNewLayouts()){\n" +
                             "            true -> %T.bind(%T.inflate(%T.from(viewGroup.context), viewGroup, false).root)\n" +
                             "            false ->  %T.inflate(%T.from(viewGroup.context), viewGroup, false)\n" +

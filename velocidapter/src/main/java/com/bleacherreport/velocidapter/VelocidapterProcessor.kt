@@ -16,10 +16,16 @@ import javax.tools.Diagnostic
 
 val bindingTester = mutableListOf<CodeBlock.Builder.() -> Unit>()
 
-fun CodeBlock.Builder.addStatementNewLayout(format: String, vararg items: Any) {
+val createBindingExtForNewLayout = mutableMapOf<ClassName, CodeBlock.Builder.() -> Unit>()
+
+fun CodeBlock.Builder.addStatementNewLayout(currentBindingClass: ClassName, format: String, vararg items: Any) {
     addStatement(format, *items)
+    val statement = format.replace("val binding = ", "")
     bindingTester.add {
-        this.addStatement(format.replace("val binding = ", ""), *items)
+        this.addStatement(statement, *items)
+    }
+    createBindingExtForNewLayout[currentBindingClass] = {
+        this.addStatement("return $statement", *items)
     }
 }
 
@@ -163,6 +169,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                                 val currentBindingClass = ClassName.bestGuess(bindingName)
                                 val newBindingClass = ClassName.bestGuess(newBinding)
                                 addStatementNewLayout(
+                                    currentBindingClass,
                                     "val binding = when(%T.useNewLayouts()){\n" +
                                             "            true -> %T.bind(%T.inflate(%T.from(viewGroup.context), viewGroup, false).root)\n" +
                                             "            false ->  %T.inflate(%T.from(viewGroup.context), viewGroup, false)\n" +
@@ -263,6 +270,9 @@ class VelocidapterProcessor : AbstractProcessor() {
                     if (it.testInflations) {
                         createTestInflation(it.testInflationSuffix)
                     }
+                    if (it.createInflationhelpersSuffix != "DONT_CREATE") {
+                        createInflationHelpers(it.createInflationhelpersSuffix)
+                    }
                 }
 
             true
@@ -271,6 +281,24 @@ class VelocidapterProcessor : AbstractProcessor() {
             printMessage("ERROR = ${e.message}")
             true
         }
+    }
+
+    fun createInflationHelpers(suffix: String) {
+        val builder = FileSpec.builder("com.bleacherreport.velocidapter", "VelocidapterViewBinding${suffix}Ktx")
+        createBindingExtForNewLayout.forEach { entry ->
+            val className = entry.key
+            val code = entry.value
+            builder.addFunction(
+                FunSpec.builder("inflateOrNew")
+                    .receiver(ClassName.bestGuess("java.lang.Class").parameterizedBy(className))
+                    .returns(className)
+                    .addParameter("viewGroup", ClassName.bestGuess("android.view.ViewGroup"))
+                    .addCode(buildCodeBlock(code))
+                    .build())
+        }
+
+        val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
+        builder.build().writeTo(File(kaptKotlinGeneratedDir, "VelocidapterViewBinding${suffix}Ktx.kt"))
     }
 
     fun createTestInflation(suffix: String) {
