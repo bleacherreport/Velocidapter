@@ -43,7 +43,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             val detatchFunctionList = roundEnv?.getElementsAnnotatedWith(OnDetachFromWindow::class.java)?.map { it }
 
             val adapterList = HashSet<BindableAdapter>()
-            val addToAll = BindableAdapter("*", mutableSetOf())
+            val addToAll = mutableListOf<BindMethodViewHolderBuilder>()
 
             fun getFunctions(
                 viewHolderElement: Element,
@@ -97,6 +97,21 @@ class VelocidapterProcessor : AbstractProcessor() {
                     detachFunction
                 )
             }
+
+
+            fun addAdapter(adapterName: String, viewHolder: BaseViewHolderBuilder) {
+                if (adapterName == "*") {
+                    adapterList.forEach {
+                        it.viewHolders.add(viewHolder)
+                    }
+                    return
+                }
+                if (!adapterList.any { it.name == adapterName }) {
+                    adapterList.add(BindableAdapter(adapterName))
+                }
+                adapterList.find { it.name == adapterName }?.viewHolders?.add(viewHolder)
+            }
+
 
             // all ViewHolder Classes
             roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)
@@ -156,14 +171,10 @@ class VelocidapterProcessor : AbstractProcessor() {
                         }
 
                         annotation.adapters.forEach { adapterName ->
-                            if (!adapterList.any { it.name == adapterName }) {
-                                adapterList.add(BindableAdapter(adapterName))
-                            }
-                            adapterList.find { it.name == adapterName }?.viewHolders?.add(viewHolder)
+                            addAdapter(adapterName, viewHolder)
                         }
                     }
                 }
-
 
             // all ViewBinding
             roundEnv?.getElementsAnnotatedWith(ViewHolder::class.java)
@@ -186,10 +197,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                     )
 
                     annotation.adapters.forEach { adapterName ->
-                        if (!adapterList.any { it.name == adapterName }) {
-                            adapterList.add(BindableAdapter(adapterName))
-                        }
-                        adapterList.find { it.name == adapterName }?.viewHolders?.add(viewHolder)
+                        addAdapter(adapterName, viewHolder = viewHolder)
                     }
                 }
 

@@ -8,7 +8,7 @@ import com.bleacherreport.velocidapterdemo.databinding.ItemNumberBinding
 
 
 /** ViewBinding Top Level Extension Function **/
-@ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter])
+@ViewHolder(adapters = ["*"])
 fun ItemNumberBinding.bind(item: NumberViewItemBindingExtension) {
     textView.text = item.text
 }
