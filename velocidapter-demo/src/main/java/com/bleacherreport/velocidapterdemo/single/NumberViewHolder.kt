@@ -11,7 +11,7 @@ import com.bleacherreport.velocidapterdemo.databinding.ItemNumberNewBinding
 
 
 /** ViewBinding Top Level Extension Function **/
-@ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter],
+@ViewHolder(adapters = ["*"],
     newBindingSuffix = VelociSuffix.VELOCI_NEW)
 fun ItemNumberBinding.bind(item: NumberViewItemBindingExtension) {
     textView.text = item.text
