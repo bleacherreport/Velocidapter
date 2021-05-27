@@ -43,6 +43,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             val detatchFunctionList = roundEnv?.getElementsAnnotatedWith(OnDetachFromWindow::class.java)?.map { it }
 
             val adapterList = HashSet<BindableAdapter>()
+            val addToAll = BindableAdapter("*", mutableSetOf())
 
             fun getFunctions(
                 viewHolderElement: Element,
@@ -198,6 +199,13 @@ class VelocidapterProcessor : AbstractProcessor() {
                     printMessage("ERROR = $it")
                 }
                 return false
+            }
+
+            adapterList.firstOrNull { it.name == "*" }?.let { all ->
+                adapterList.remove(all)
+                adapterList.forEach {
+                    it.viewHolders.addAll(all.viewHolders)
+                }
             }
 
             adapterList.forEach { entry ->
