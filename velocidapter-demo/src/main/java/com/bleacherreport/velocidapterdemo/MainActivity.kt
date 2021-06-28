@@ -28,7 +28,6 @@ class MainActivity : AppCompatActivity() {
         VelocidapterSettings.useNewLayouts = { true }
 
         setContentView(viewBind.root)
-
         viewBind.navigation.setOnNavigationItemSelectedListener { item ->
             job?.cancel()
             when (item.itemId) {

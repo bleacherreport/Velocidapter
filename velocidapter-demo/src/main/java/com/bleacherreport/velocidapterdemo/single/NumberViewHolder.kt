@@ -30,7 +30,6 @@ object Test {
 class NumberViewHolder(val binding: ItemNumberBinding) : RecyclerView.ViewHolder(binding.root) {
     @Bind
     fun bind(item: NumberViewItemViewHolder, position: Int) {
-
         binding.bind(item.number.copy(text = item.number.text + " @ position $position"))
     }
 }

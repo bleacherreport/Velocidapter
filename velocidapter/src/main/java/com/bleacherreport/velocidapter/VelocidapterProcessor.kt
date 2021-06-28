@@ -274,7 +274,7 @@ class VelocidapterProcessor : AbstractProcessor() {
 
                 builder.addType(getDataList(entry))
                 builder.addType(getDataTarget(entry))
-                builder.addFunction(getAdapterKtx(entry))
+                builder.addFunction(builder.getAdapterKtx(entry))
 
                 val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
                 builder.build().writeTo(File(kaptKotlinGeneratedDir, "${entry.name}.kt"))
@@ -410,7 +410,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         return typeSpec.build()
     }
 
-    private fun getAdapterKtx(adapter: BindableAdapter): FunSpec {
+    private fun FileSpec.Builder.getAdapterKtx(adapter: BindableAdapter): FunSpec {
         val funSpec = FunSpec.builder("attach${adapter.name}")
             .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
             .returns(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
@@ -431,7 +431,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         return funSpec.build()
     }
 
-    private fun getCreateViewHolderLambda(viewHolders: Set<BaseViewHolderBuilder>): CodeBlock {
+    private fun FileSpec.Builder.getCreateViewHolderLambda(viewHolders: Set<BaseViewHolderBuilder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ viewGroup, type ->")
             viewHolders.filterNot { it.annotation.velociBinding == VelociBinding.ONLY_NEW }
@@ -443,12 +443,12 @@ class VelocidapterProcessor : AbstractProcessor() {
                             ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
                         )
                         viewHolders.firstOrNull { it.annotation.velociBinding == VelociBinding.ONLY_NEW && it.bindFunction.argumentType == viewHolder.bindFunction.argumentType }
-                            ?.createViewHolder?.invoke(this)
+                            ?.createViewHolder?.invoke(this, this@getCreateViewHolderLambda)
                         addStatement("} else {")
-                        viewHolder.createViewHolder(this)
+                        viewHolder.createViewHolder(this, this@getCreateViewHolderLambda)
                         addStatement("}")
                     } else {
-                        viewHolder.createViewHolder(this)
+                        viewHolder.createViewHolder(this, this@getCreateViewHolderLambda)
                     }
                     endControlFlow()
                 }

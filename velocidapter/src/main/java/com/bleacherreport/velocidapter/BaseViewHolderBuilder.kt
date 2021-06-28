@@ -4,7 +4,7 @@ import com.bleacherreport.velocidapterannotations.VelociSuffix
 import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.FileSpec
 import javax.lang.model.element.Element
 
 interface BaseViewHolderBuilder {
@@ -14,7 +14,7 @@ interface BaseViewHolderBuilder {
     val unbindFunction: FunctionName?
     val attachFunction: FunctionName?
     val detachFunction: FunctionName?
-    val createViewHolder: CodeBlock.Builder.() -> Unit
+    val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit
     val annotation: ViewHolder
 }
 
@@ -25,7 +25,7 @@ data class BindMethodViewHolderBuilder(
     override val unbindFunction: FunctionName?,
     override val attachFunction: FunctionName?,
     override val detachFunction: FunctionName?,
-    override val createViewHolder: CodeBlock.Builder.() -> Unit,
+    override val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit,
 ) : BaseViewHolderBuilder {
     override val annotation by lazy {
         element.getAnnotation(ViewHolder::class.java)!!
@@ -44,7 +44,7 @@ data class ClassViewHolderBuilder(
     override val annotation by lazy {
         element.getAnnotation(ViewHolder::class.java)!!
     }
-    override val createViewHolder: CodeBlock.Builder.() -> Unit = {
+    override val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit = {
         addStatement(
             "val inflater = %T.from(viewGroup.context)",
             ClassName("android.view", "LayoutInflater")
@@ -79,9 +79,9 @@ data class ClassViewHolderBuilder(
         var enclosingName = element.enclosingElement.toString()
         if (isTopLevel) {
             enclosingName = enclosingName.split(".").dropLast(1).joinToString(".")
+            it.addImport(enclosingName, bindFunction.functionName)
             addStatement(
-                "    binding.%M(data as %T)",
-                MemberName(enclosingName, bindFunction.functionName),
+                "   binding.${bindFunction.functionName}(data as %T)",
                 ClassName.bestGuess(bindFunction.argumentType)
             )
         } else {
