@@ -2,7 +2,7 @@ package com.bleacherreport.velocidapter
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.FileSpec
 import javax.lang.model.element.Element
 
 interface BaseViewHolderBuilder {
@@ -12,7 +12,7 @@ interface BaseViewHolderBuilder {
     val unbindFunction: FunctionName?
     val attachFunction: FunctionName?
     val detachFunction: FunctionName?
-    val createViewHolder: CodeBlock.Builder.() -> Unit
+    val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit
 }
 
 data class BindMethodViewHolderBuilder(
@@ -22,7 +22,7 @@ data class BindMethodViewHolderBuilder(
     override val unbindFunction: FunctionName?,
     override val attachFunction: FunctionName?,
     override val detachFunction: FunctionName?,
-    override val createViewHolder: CodeBlock.Builder.() -> Unit,
+    override val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit,
 ) : BaseViewHolderBuilder
 
 data class ClassViewHolderBuilder(
@@ -34,7 +34,7 @@ data class ClassViewHolderBuilder(
     override val attachFunction: FunctionName?,
     override val detachFunction: FunctionName?,
 ) : BaseViewHolderBuilder {
-    override val createViewHolder: CodeBlock.Builder.() -> Unit = {
+    override val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit = {
         addStatement(
             "val inflater = %T.from(viewGroup.context)",
             ClassName("android.view", "LayoutInflater")
@@ -52,9 +52,9 @@ data class ClassViewHolderBuilder(
         var enclosingName = element.enclosingElement.toString()
         if (isTopLevel) {
             enclosingName = enclosingName.split(".").dropLast(1).joinToString(".")
+            it.addImport(enclosingName, bindFunction.functionName)
             addStatement(
-                "    binding.%M(data as %T)",
-                MemberName(enclosingName, bindFunction.functionName),
+                "   binding.${bindFunction.functionName}(data as %T)",
                 ClassName.bestGuess(bindFunction.argumentType)
             )
         } else {

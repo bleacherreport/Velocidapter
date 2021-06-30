@@ -16,3 +16,8 @@ class StringViewHolder(binding: ItemStringBinding) : RecyclerView.ViewHolder(bin
         textView.text = "$string @ position $position"
     }
 }
+
+@ViewHolder(adapters = ["*"])
+fun ItemStringBinding.bind(string: Float) {
+    textView.text = "$string @ position"
+}
