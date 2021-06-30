@@ -32,6 +32,7 @@ data class BindMethodViewHolderBuilder(
     }
 }
 
+
 data class ClassViewHolderBuilder(
     override val element: Element,
     override val name: String,
