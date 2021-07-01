@@ -81,9 +81,11 @@ Next, create your ViewHolder. Your Adapter is bound to one or more Adapters usin
 
 ```kotlin
 @ViewHolder(adapters = [MyAdapter])
-class StringViewHolder(val binding : MyViewBinding) : 
+class StringViewHolder(val binding : MyViewBinding, val alsoInclude : CustomClass) : 
         RecyclerView.ViewHolder(binding.root)
 ```
+
+You'll notice there is also a paramater of type `CustomClass` in the example above.  You can include as many parameters in the constructor as you'd like, and the auto generated adapter will also require those paramters on creation.
 
 Your ViewHolder needs to have a way to be bound with data. You need to annotate any function within the ViewHolder with `@Bind`. The function can have any name and can take one or two parameters.
 1. The first argument must the data model you bind with
