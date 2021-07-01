@@ -25,9 +25,12 @@ object Test {
     }
 }
 
+class tempTester()
+
 /** ViewBinding ViewHolder Class **/
 @ViewHolder(adapters = [MainActivity.SingleAdapter, MainActivity.MultiAdapter], velociBinding = VelociBinding.ONLY_OLD)
-class NumberViewHolder(val binding: ItemNumberBinding) : RecyclerView.ViewHolder(binding.root) {
+class NumberViewHolder(val binding: ItemNumberBinding, temp: tempTester) :
+    RecyclerView.ViewHolder(binding.root) {
     @Bind
     fun bind(item: NumberViewItemViewHolder, position: Int) {
         binding.bind(item.number.copy(text = item.number.text + " @ position $position"))

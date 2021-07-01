@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import javax.lang.model.element.Element
+import javax.lang.model.element.TypeElement
 
 interface BaseViewHolderBuilder {
     val element: Element
@@ -21,6 +22,7 @@ interface BaseViewHolderBuilder {
 data class BindMethodViewHolderBuilder(
     override val element: Element,
     override val name: String,
+    val constructorParams: Map<String, TypeElement>,
     override val bindFunction: ViewHolderBindFunction,
     override val unbindFunction: FunctionName?,
     override val attachFunction: FunctionName?,
