@@ -12,6 +12,7 @@ import com.bleacherreport.velocidapterdemo.parentchild.ChildPoko
 import com.bleacherreport.velocidapterdemo.parentchild.ParentPoko
 import com.bleacherreport.velocidapterdemo.single.NumberViewItemBindingExtension
 import com.bleacherreport.velocidapterdemo.single.NumberViewItemBindingMemberFunction
+import com.bleacherreport.velocidapterdemo.single.tempTester
 import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
@@ -41,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun viewSingle(): Boolean {
         viewBind.description.setText(R.string.description_single)
-        val target = viewBind.recyclerView.withLinearLayoutManager().attachSingleAdapter()
+        val target = viewBind.recyclerView.withLinearLayoutManager().attachSingleAdapter(temp = tempTester())
         val dataList = SingleAdapterDataList()
         for (i in 0 until 100) dataList.add(NumberViewItemBindingMemberFunction(i.toString()))
         dataList.addListOfNumberViewItemBindingExtension(listOf(101,
@@ -55,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         viewBind.description.setText(R.string.description_multi)
         val liveData = viewModel.multiLiveData
         viewBind.recyclerView.withLinearLayoutManager()
-                .attachMultiAdapter()
+            .attachMultiAdapter(tempTester())
                 .observeLiveData(liveData, this)
         viewModel.updateData()
         return true

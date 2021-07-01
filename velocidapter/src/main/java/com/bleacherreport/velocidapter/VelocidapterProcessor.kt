@@ -12,9 +12,26 @@ import javax.lang.model.SourceVersion
 import javax.lang.model.element.*
 import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.ExecutableType
+import javax.lang.model.type.TypeMirror
 import javax.tools.Diagnostic
 
 val errors = mutableListOf<String>()
+
+fun TypeMirror.typeElement(): TypeElement? {
+    val viewBindingParam = this as? DeclaredType
+    return (viewBindingParam?.asElement() as? TypeElement)
+}
+
+private fun TypeMirror.takeIfViewBinding(): TypeElement? {
+    val viewBindingTypeElement = typeElement() ?: return null
+    // param must be a view binding
+    if (viewBindingTypeElement.interfaces?.firstOrNull()
+            ?.toString() != "androidx.viewbinding.ViewBinding"
+    ) return null
+    viewBindingTypeElement.qualifiedName?.toString()
+        ?: return null
+    return viewBindingTypeElement
+}
 
 @AutoService(Processor::class)
 class VelocidapterProcessor : AbstractProcessor() {
@@ -123,29 +140,25 @@ class VelocidapterProcessor : AbstractProcessor() {
                     val annotation = viewHolderElement.getAnnotation(ViewHolder::class.java)!!
                     val name = getFullPath(viewHolderElement)
                     // fetch first viewBinding from constructor
-                    val binding = viewHolderElement.enclosedElements
+                    val items: Pair<TypeElement, ExecutableElement> = viewHolderElement.enclosedElements
                         .mapNotNull { element ->
                             if (element.kind != ElementKind.CONSTRUCTOR) return@mapNotNull null
                             if (element !is ExecutableElement) return@mapNotNull null
                             // must have one param
-                            if (element.parameters.size != 1) return@mapNotNull null
                             val executableType = (element.asType() as ExecutableType)
                             val parameters = executableType.parameterTypes
-                            val viewBindingParam = parameters.getOrNull(0) as? DeclaredType
-                            val viewBindingTypeElement = (viewBindingParam?.asElement() as? TypeElement)
-                            // param must be a view binding
-                            if (viewBindingTypeElement?.interfaces?.firstOrNull()
-                                    ?.toString() != "androidx.viewbinding.ViewBinding"
-                            ) return@mapNotNull null
-                            viewBindingTypeElement.qualifiedName?.toString()
-                                ?: return@mapNotNull null
-                            viewBindingTypeElement
+                            parameters.forEach {
+                                it.takeIfViewBinding()?.also { return@mapNotNull it to element }
+                            }
+                            null
                         }
                         .firstOrNull()
                         ?: kotlin.run {
-                            errors.add("@ViewHolder for class ${viewHolderElement.simpleName} must have a constructor with a single param that is of type ViewBinding")
+                            errors.add("@ViewHolder for class ${viewHolderElement.simpleName} must have a constructor with a ViewBinding param")
                             return@forEach
                         }
+
+                    val binding = items.first
 
                     getFunctions(viewHolderElement,
                         binding.qualifiedName?.toString()!!) { bindFunction, unbindFunction, attachFunction, detachFunction ->
@@ -155,9 +168,18 @@ class VelocidapterProcessor : AbstractProcessor() {
                             return@getFunctions
                         }
 
+                        val executableType = (items.second.asType() as ExecutableType)
+                        val items = executableType.parameterTypes.mapIndexedNotNull { index, typeMirror ->
+                            (items.second.parameters[index]?.toString()
+                                ?: return@mapIndexedNotNull null) to
+                                    (typeMirror.typeElement() ?: return@mapIndexedNotNull null)
+                        }.toMap()
+
+
                         val viewHolder = BindMethodViewHolderBuilder(
                             viewHolderElement,
                             getFullPath(viewHolderElement),
+                            items.filter { it.value.asType().takeIfViewBinding() == null },
                             bindFunction,
                             unbindFunction,
                             attachFunction,
@@ -167,7 +189,13 @@ class VelocidapterProcessor : AbstractProcessor() {
                                 ClassName.bestGuess(binding.asType().toString()),
                                 ClassName("android.view", "LayoutInflater"),
                             )
-                            addStatement("return@FunctionalAdapter·%T(binding)", ClassName.bestGuess(name))
+
+                            addStatement("return@FunctionalAdapter·%T(${
+                                items.mapNotNull {
+                                    if (it.value.asType().takeIfViewBinding() != null) return@mapNotNull "binding"
+                                    it.key
+                                }.joinToString()
+                            })", ClassName.bestGuess(name))
                         }
 
                         annotation.adapters.forEach { adapterName ->
@@ -294,8 +322,21 @@ class VelocidapterProcessor : AbstractProcessor() {
     }
 
     private fun FileSpec.Builder.getAdapterKtx(adapter: BindableAdapter): FunSpec {
+
+        val constructors = mutableMapOf<String, TypeElement>()
+        adapter.viewHolders.forEach {
+            if (it is BindMethodViewHolderBuilder) {
+                constructors.putAll(it.constructorParams)
+            }
+        }
+
         val funSpec = FunSpec.builder("attach${adapter.name}")
             .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
+            .apply {
+                constructors.forEach { (s, typeMirror) ->
+                    addParameter(s, typeMirror.asClassName())
+                }
+            }
             .returns(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
                 .parameterizedBy(ClassName.bestGuess(adapter.dataListName)))
             .addStatement("val adapter = %T(⇥",
@@ -311,6 +352,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             .addStatement("⇤)")
             .addStatement("this.adapter = adapter")
             .addStatement("return adapter")
+
         return funSpec.build()
     }
 
