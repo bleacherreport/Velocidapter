@@ -17,17 +17,19 @@ import javax.tools.Diagnostic
 
 val bindingTester = mutableListOf<CodeBlock.Builder.() -> Unit>()
 
-val createBindingExtForNewLayout = mutableMapOf<ClassName, CodeBlock.Builder.() -> Unit>()
+val createBindingExtForNewLayout = mutableMapOf<ClassName, ViewBindingInflater>()
 
-fun CodeBlock.Builder.addStatementNewLayout(currentBindingClass: ClassName, format: String, vararg items: Any) {
-    addStatement(format, *items)
-    val statement = format.replace("val binding = ", "")
+fun CodeBlock.Builder.addStatementNewLayout(currentBindingClass: ClassName, viewBindingInflater: ViewBindingInflater) {
+    viewBindingInflater.apply {
+        this@addStatementNewLayout.buildInflateForParent("val binding = ")
+    }
     bindingTester.add {
-        this.addStatement(statement, *items)
+        val tester = this
+        viewBindingInflater.apply {
+            tester.buildInflateForParent()
+        }
     }
-    createBindingExtForNewLayout[currentBindingClass] = {
-        this.addStatement("return $statement", *items)
-    }
+    createBindingExtForNewLayout[currentBindingClass] = viewBindingInflater
 }
 
 val errors = mutableListOf<String>()
@@ -208,16 +210,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                                 val newBindingClass = ClassName.bestGuess(newBinding)
                                 addStatementNewLayout(
                                     currentBindingClass,
-                                    "val binding = when(%T.useNewLayouts()){\n" +
-                                            "            true -> %T.bind(%T.inflate(%T.from(viewGroup.context), viewGroup, false).root)\n" +
-                                            "            false ->  %T.inflate(%T.from(viewGroup.context), viewGroup, false)\n" +
-                                            "        }",
-                                    ClassName.bestGuess("com.bleacherreport.velocidapterandroid.VelocidapterSettings"),
-                                    currentBindingClass,
-                                    newBindingClass,
-                                    ClassName("android.view", "LayoutInflater"),
-                                    currentBindingClass,
-                                    ClassName("android.view", "LayoutInflater"),
+                                    ViewBindingInflater(newBindingClass, currentBindingClass)
                                 )
                             } ?: addStatement(
                                 "val binding = %T.inflate(%T.from(viewGroup.context), viewGroup, false)",
@@ -336,7 +329,25 @@ class VelocidapterProcessor : AbstractProcessor() {
                     .receiver(ClassName.bestGuess("java.lang.Class").parameterizedBy(className))
                     .returns(className)
                     .addParameter("viewGroup", ClassName.bestGuess("android.view.ViewGroup"))
-                    .addCode(buildCodeBlock(code))
+                    .addCode(buildCodeBlock {
+                        val block = this
+                        code.apply {
+                            block.buildInflateForParent("return ")
+                        }
+                    })
+                    .build())
+
+            builder.addFunction(
+                FunSpec.builder("inflateOrNew")
+                    .receiver(ClassName.bestGuess("java.lang.Class").parameterizedBy(className))
+                    .returns(className)
+                    .addParameter("inflater", ClassName("android.view", "LayoutInflater"))
+                    .addCode(buildCodeBlock {
+                        val block = this
+                        code.apply {
+                            block.buildInflateFromLayoutInflater("return ")
+                        }
+                    })
                     .build())
         }
 
