@@ -17,6 +17,10 @@ import javax.tools.Diagnostic
 
 val errors = mutableListOf<String>()
 
+val createFile = FileSpec.builder("com.bleacherreport.velocidapter", "VelociCreator")
+val createObj = TypeSpec.objectBuilder("VelociCreator")
+var didRun = false;
+
 fun TypeMirror.typeElement(): TypeElement? {
     val viewBindingParam = this as? DeclaredType
     return (viewBindingParam?.asElement() as? TypeElement)
@@ -249,12 +253,18 @@ class VelocidapterProcessor : AbstractProcessor() {
 
                 builder.addType(getDataList(entry))
                 builder.addType(getDataTarget(entry))
-                builder.addFunction(builder.getAdapterKtx(entry))
+                createObj.addFunction(createAdapter(entry))
 
                 val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
                 builder.build().writeTo(File(kaptKotlinGeneratedDir, "${entry.name}.kt"))
             }
 
+            if (!didRun) {
+                didRun = true
+                createFile.addType(createObj.build())
+                val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
+                createFile.build().writeTo(File(kaptKotlinGeneratedDir, "VelociCreator.kt"))
+            }
             true
         } catch (e: Exception) {
             printMessage("")
@@ -321,7 +331,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         return typeSpec.build()
     }
 
-    private fun FileSpec.Builder.getAdapterKtx(adapter: BindableAdapter): FunSpec {
+    private fun createAdapter(adapter: BindableAdapter): FunSpec {
 
         val constructors = mutableMapOf<String, TypeElement>()
         adapter.viewHolders.forEach {
@@ -330,18 +340,35 @@ class VelocidapterProcessor : AbstractProcessor() {
             }
         }
 
-        val funSpec = FunSpec.builder("attach${adapter.name}")
-            .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
+        val attachSpec = FunSpec.builder("attach${adapter.name}")
             .apply {
                 constructors.forEach { (s, typeMirror) ->
                     addParameter(s, typeMirror.asClassName())
                 }
             }
+            .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
             .returns(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
-                .parameterizedBy(ClassName.bestGuess(adapter.dataListName)))
+                .parameterizedBy(ClassName("com.bleacherreport.velocidapter", adapter.dataListName)))
+            .addStatement("val adapter = VelociCreator.create${adapter.name}(${
+                constructors.map { it.key }.joinToString()
+            })")
+            .addStatement("this.adapter = adapter  as RecyclerView.Adapter<RecyclerView.ViewHolder>")
+            .addStatement("return adapter")
+
+
+        createFile.addFunction(attachSpec.build())
+
+        val funSpec = FunSpec.builder("create${adapter.name}")
+            .apply {
+                constructors.forEach { (s, typeMirror) ->
+                    addParameter(s, typeMirror.asClassName())
+                }
+            }
+            .returns(ClassName("com.bleacherreport.velocidapterandroid", "FunctionalAdapter")
+                .parameterizedBy(ClassName("com.bleacherreport.velocidapter", adapter.dataListName)))
             .addStatement("val adapter = %T(⇥",
                 ClassName("com.bleacherreport.velocidapterandroid", "FunctionalAdapter")
-                    .parameterizedBy(ClassName.bestGuess(adapter.dataListName))
+                    .parameterizedBy(ClassName("com.bleacherreport.velocidapter", adapter.dataListName))
             )
             .addCode("%L,\n", getCreateViewHolderLambda(adapter.viewHolders))
             .addCode("%L,\n", getBindViewHolderLamda(adapter.viewHolders))
@@ -350,18 +377,17 @@ class VelocidapterProcessor : AbstractProcessor() {
             .addCode("%L,\n", FunctionName.createFunctionFrom(adapter.viewHolders) { attachFunction })
             .addCode("%L\n", FunctionName.createFunctionFrom(adapter.viewHolders) { detachFunction })
             .addStatement("⇤)")
-            .addStatement("this.adapter = adapter")
             .addStatement("return adapter")
 
         return funSpec.build()
     }
 
-    private fun FileSpec.Builder.getCreateViewHolderLambda(viewHolders: Set<BaseViewHolderBuilder>): CodeBlock {
+    private fun getCreateViewHolderLambda(viewHolders: Set<BaseViewHolderBuilder>): CodeBlock {
         return buildCodeBlock {
             beginControlFlow("{ viewGroup, type ->")
             viewHolders.forEachIndexed { index, viewHolder ->
                 beginControlFlow("if (type == $index)")
-                viewHolder.createViewHolder(this, this@getCreateViewHolderLambda)
+                viewHolder.createViewHolder(this)
                 endControlFlow()
             }
             addStatement("throw RuntimeException(%S)", "Type not found ViewHolder set.")
