@@ -84,7 +84,7 @@ class ViewHolderBindFunction private constructor(
     override fun CodeBlock.Builder.createBindFunction(viewHolderClassName: String) {
         beginControlFlow("if (viewHolder::class == %T::class)", ClassName.bestGuess(viewHolderClassName))
         addStatement(
-            "(viewHolder as %T).apply {",
+            "(viewHolder as %T).apply{\r\n",
             ClassName.bestGuess(viewHolderClassName),
         )
 

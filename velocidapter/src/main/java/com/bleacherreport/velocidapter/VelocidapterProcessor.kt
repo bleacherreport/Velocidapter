@@ -481,7 +481,7 @@ class VelocidapterProcessor : AbstractProcessor() {
             .addStatement("val adapter = VelociCreator.create${adapter.name}(${
                 constructors.map { it.key }.joinToString()
             })")
-            .addStatement("this.adapter = adapter  as RecyclerView.Adapter<RecyclerView.ViewHolder>")
+            .addStatement("this.adapter = adapter")
             .addStatement("return adapter")
 
 
