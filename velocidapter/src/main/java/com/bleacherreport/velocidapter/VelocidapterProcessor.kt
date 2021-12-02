@@ -299,6 +299,7 @@ class VelocidapterProcessor : AbstractProcessor() {
 
                 builder.addType(getDataList(entry))
                 builder.addType(getDataTarget(entry))
+                builder.addFunction(attachAdapter(entry))
                 createObj.addFunction(createAdapter(entry))
 
                 val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
@@ -460,8 +461,7 @@ class VelocidapterProcessor : AbstractProcessor() {
         return typeSpec.build()
     }
 
-    private fun createAdapter(adapter: BindableAdapter): FunSpec {
-
+    private fun attachAdapter(adapter: BindableAdapter): FunSpec {
         val constructors = mutableMapOf<String, TypeElement>()
         adapter.viewHolders.forEach {
             if (it is BindMethodViewHolderBuilder) {
@@ -478,14 +478,24 @@ class VelocidapterProcessor : AbstractProcessor() {
             .receiver(ClassName("androidx.recyclerview.widget", "RecyclerView"))
             .returns(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
                 .parameterizedBy(ClassName("com.bleacherreport.velocidapter", adapter.dataListName)))
-            .addStatement("val adapter = VelociCreator.create${adapter.name}(${
+            .addStatement("val adapter = %T.create${adapter.name}(${
                 constructors.map { it.key }.joinToString()
-            })")
+            })", ClassName("com.bleacherreport.velocidapter", "VelociCreator"))
             .addStatement("this.adapter = adapter")
             .addStatement("return adapter")
 
+        return attachSpec.build()
 
-        createFile.addFunction(attachSpec.build())
+    }
+
+    private fun createAdapter(adapter: BindableAdapter): FunSpec {
+
+        val constructors = mutableMapOf<String, TypeElement>()
+        adapter.viewHolders.forEach {
+            if (it is BindMethodViewHolderBuilder) {
+                constructors.putAll(it.constructorParams)
+            }
+        }
 
         val funSpec = FunSpec.builder("create${adapter.name}")
             .apply {
