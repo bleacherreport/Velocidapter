@@ -493,7 +493,7 @@ class VelocidapterProcessor : AbstractProcessor() {
                     addParameter(s, typeMirror.asClassName())
                 }
             }
-            .returns(ClassName("com.bleacherreport.velocidapterandroid", "AdapterDataTarget")
+            .returns(ClassName("com.bleacherreport.velocidapterandroid", "FunctionalAdapter")
                 .parameterizedBy(ClassName("com.bleacherreport.velocidapter", adapter.dataListName)))
             .addStatement("val adapter = %T(⇥",
                 ClassName("com.bleacherreport.velocidapterandroid", "FunctionalAdapter")
