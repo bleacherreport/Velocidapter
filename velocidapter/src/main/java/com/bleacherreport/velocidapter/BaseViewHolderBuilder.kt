@@ -4,6 +4,7 @@ import com.bleacherreport.velocidapterannotations.VelociSuffix
 import com.bleacherreport.velocidapterannotations.ViewHolder
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.FileSpec
 import javax.lang.model.element.Element
 import javax.lang.model.element.TypeElement
 
@@ -14,8 +15,8 @@ interface BaseViewHolderBuilder {
     val unbindFunction: FunctionName?
     val attachFunction: FunctionName?
     val detachFunction: FunctionName?
-    val createViewHolder: CodeBlock.Builder.() -> Unit
     val annotation: ViewHolder
+    val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit
 }
 
 data class BindMethodViewHolderBuilder(
@@ -26,7 +27,7 @@ data class BindMethodViewHolderBuilder(
     override val unbindFunction: FunctionName?,
     override val attachFunction: FunctionName?,
     override val detachFunction: FunctionName?,
-    override val createViewHolder: CodeBlock.Builder.() -> Unit,
+    override val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit,
 ) : BaseViewHolderBuilder {
     override val annotation by lazy {
         element.getAnnotation(ViewHolder::class.java)!!
@@ -45,7 +46,7 @@ data class ClassViewHolderBuilder(
     override val annotation by lazy {
         element.getAnnotation(ViewHolder::class.java)!!
     }
-    override val createViewHolder: CodeBlock.Builder.() -> Unit = {
+    override val createViewHolder: CodeBlock.Builder.(FileSpec.Builder) -> Unit = {
         addStatement(
             "val inflater = %T.from(viewGroup.context)",
             ClassName("android.view", "LayoutInflater")
@@ -71,7 +72,7 @@ data class ClassViewHolderBuilder(
         var enclosingName = element.enclosingElement.toString()
         if (isTopLevel) {
             enclosingName = enclosingName.split(".").dropLast(1).joinToString(".")
-            createFile.addImport(enclosingName, bindFunction.functionName)
+            it.addImport(enclosingName, bindFunction.functionName)
             addStatement(
                 "   binding.${bindFunction.functionName}(data as %T)",
                 ClassName.bestGuess(bindFunction.argumentType)
